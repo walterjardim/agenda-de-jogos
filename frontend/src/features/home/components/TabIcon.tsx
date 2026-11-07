@@ -2,6 +2,8 @@ import type { ColorValue } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 
 const icons = {
+  agenda:
+    'M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2Zm2-2v4m10-4v4M3 10h18m-13 5h2m4 0h2',
   search: 'M16 10a6 6 0 1 1-12 0 6 6 0 0 1 12 0Zm-1.8 4.2L21 21',
   teams:
     'M15 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2m20 0v-2a4 4 0 0 0-3-3.9M12 7a3.5 3.5 0 1 1-7 0 3.5 3.5 0 0 1 7 0Zm4-3.4a3.5 3.5 0 0 1 0 6.8',

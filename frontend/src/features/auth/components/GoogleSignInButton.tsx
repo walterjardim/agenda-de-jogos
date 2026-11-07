@@ -2,15 +2,20 @@ import { Pressable, StyleSheet, Text } from 'react-native';
 import Svg, { Path } from 'react-native-svg';
 import { theme } from '../../../shared/theme/theme';
 
-type Props = { onPress: () => void };
+type Props = { onPress: () => void; disabled?: boolean };
 
-export function GoogleSignInButton({ onPress }: Props) {
+export function GoogleSignInButton({ onPress, disabled }: Props) {
   return (
     <Pressable
       onPress={onPress}
+      disabled={disabled}
+      accessibilityState={{ disabled }}
       accessibilityRole="button"
       accessibilityLabel="Entrar com Google"
-      style={({ pressed }) => [styles.button, pressed && styles.pressed]}
+      style={({ pressed }) => [
+        styles.button,
+        (pressed || disabled) && styles.pressed,
+      ]}
     >
       <Svg width={26} height={26} viewBox="0 0 48 48" aria-hidden={true}>
         <Path

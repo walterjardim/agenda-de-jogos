@@ -2,28 +2,46 @@
 
 Base em React Native, Expo SDK 57 e TypeScript estrito. A tela inicial é o login, inspirada em `../../MVP/wireframe/login-UX.png` e `wireframe-mvp.md`.
 
-## Abrir no VS Code e executar
+## Executar
 
-Pré-requisitos: Node.js 22.13 ou superior (recomendado: Node 22 LTS), npm e Expo Go compatível com SDK 57 para dispositivos físicos.
+Use Node.js 24, instale as dependências e copie o arquivo de ambiente na pasta
+`frontend`.
 
-Abra esta pasta diretamente no VS Code: **Arquivo → Abrir Pasta → codigo-fonte/frontend**. No terminal:
-
-```sh
+```powershell
 npm ci
-npm start
+Copy-Item .env.example .env
 ```
 
-Leia o QR code com Expo Go; o celular e o computador devem estar na mesma rede. Se o Expo Go instalado não suportar o SDK, use uma development build compatível conforme a documentação oficial.
+Preencha `EXPO_PUBLIC_API_URL` com a URL da API incluindo `/api/v1`. Para o
+navegador local, use `http://localhost:3000/api/v1`. No dispositivo, a URL
+precisa ser acessível a partir do dispositivo. Builds de produção exigem HTTPS.
 
-- `npm run web`: executar no navegador, sem emulador.
-- `npm run android`: abrir em emulador Android já configurado no Android Studio.
-- `npm run ios`: abrir no simulador iOS (somente macOS com Xcode).
-- `npm run typecheck`: verificar TypeScript.
-- `npm run build`: gerar os bundles Android/iOS e a versão web em `dist/`. Não produz APK/IPA.
+Configure os clientes OAuth no mesmo projeto do Google Cloud.
+
+- **Web:** configure `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` com o ID do cliente
+  OAuth do tipo Web. Autorize a origem JavaScript do frontend no Google Cloud,
+  por exemplo `http://localhost:8081`. Autorize essa mesma origem em
+  `CORS_ORIGINS` no backend. Rode `npm run web`.
+- **Android:** registre o pacote `com.agendadejogos.app` e o SHA-1 da chave que
+  assina o build no cliente OAuth Android. O SDK recebe o ID do cliente Web
+  para solicitar o token de identidade.
+- **iOS:** registre o bundle ID `com.agendadejogos.app` e preencha
+  `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`. A configuração do Expo deriva o esquema
+  de retorno a partir desse ID. Recompile o app após mudar esse valor.
+
+No backend, inclua o ID Web e qualquer audiência iOS usada pelo app em
+`GOOGLE_CLIENT_IDS`. Use apenas IDs públicos no frontend. O login nativo requer
+um build de desenvolvimento ou distribuição. Para compilar localmente, use
+`npx expo run:android` ou `npx expo run:ios` no macOS. Para abrir o servidor
+de desenvolvimento com um build já instalado, use `npm start`.
+
+- `npm run typecheck` verifica os tipos.
+- `npm run lint` executa a análise estática.
+- `npm run build` exporta os bundles Android, iOS e web em `dist/`.
 
 ## Builds instaláveis
 
-O `eas.json` inclui perfis de desenvolvimento, APK para testes e produção. Para usar o perfil development, instale antes `expo-dev-client` com `npx expo install expo-dev-client`.
+O `eas.json` inclui perfis de desenvolvimento, APK para testes e produção. Configure as variáveis públicas para o ambiente de build no EAS.
 
 ```sh
 npx eas-cli@latest login
@@ -38,11 +56,11 @@ Os builds remotos exigem conta Expo, rede e configuração de assinatura. A dist
 
 ```text
 src/app/                        # Rotas do Expo Router
-  (home)/                      # Buscar, Meus times e Perfil
+  (home)/                      # Agenda, Buscar, Meus times e Perfil
 src/features/auth/
-  screens/LoginScreen.tsx       # Composição da tela e aviso de configuração
+  screens/LoginScreen.tsx       # Login com Google
   components/                   # Marca, ilustração e botão Google
-src/features/home/             # Telas e dados locais da prévia
+src/features/home/             # Telas autenticadas e prévia local
 src/shared/
   components/CalendarIcon.tsx    # Ícone reutilizável
   theme/theme.ts                # Paleta centralizada
@@ -57,11 +75,18 @@ encontrar e seguir o Ajax. Em **Meus times**, é possível deixar de seguir. Em
 **Perfil**, use **Sair da prévia** para voltar ao login. Os dados são locais e o
 seguimento é descartado ao sair. O acesso à prévia fica restrito a desenvolvimento.
 
-## Escopo da autenticação
+## Sessão e perfil
 
-Esta entrega implementa a interface inicial. Ao pressionar **Entrar com Google**, a tela informa que a autenticação ainda precisa ser configurada; não cria conta, sessão nem simula login.
+O login envia o ID token para `POST /auth/google`. O app guarda a sessão emitida
+pela API no SecureStore em Android e iOS. Na web, usa o armazenamento da aba,
+que mantém a sessão ao recarregar a página e é descartado ao fechar a aba.
+Ao restaurar a sessão, o app consulta `GET /me`. O perfil salva o fuso em
+`PATCH /me`, e **Sair** revoga a sessão em `POST /auth/logout`.
 
-Para integrar, configurar os clientes OAuth Google por plataforma, implementar o fluxo apropriado em uma development build e enviar a identidade ao endpoint de autenticação da API REST definido na especificação técnica. O backend deve validar a identidade e criar sua própria sessão. Guardar o token da sessão mobile em Expo SecureStore. Nunca incluir segredo OAuth, credenciais de banco ou chaves privilegiadas no frontend. Acrescentar serviços e hooks em `features/auth` quando houver integração real, mantendo os componentes de apresentação independentes.
+O app abre **Buscar times** quando a conta ainda não tem time selecionado e
+**Agenda da semana** quando o perfil já tem um time. A busca, a escolha de
+times e a listagem de jogos da conta dependem dos respectivos endpoints.
+O Ajax de exemplo aparece na prévia de desenvolvimento.
 
 ## Referências
 

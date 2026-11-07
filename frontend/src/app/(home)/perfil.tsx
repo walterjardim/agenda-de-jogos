@@ -1,1 +1,1 @@
-export { ProfilePreviewScreen as default } from '../../features/home/screens/HomeScreens';
+export { ProfileScreen as default } from '../../features/home/screens/HomeScreens';

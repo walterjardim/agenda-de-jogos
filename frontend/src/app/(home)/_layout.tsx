@@ -1,14 +1,17 @@
 import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useAuth } from '../../features/auth/AuthContext';
 import { TabIcon } from '../../features/home/components/TabIcon';
 import { theme } from '../../shared/theme/theme';
 
 export default function HomeLayout() {
   const { bottom } = useSafeAreaInsets();
+  const { session } = useAuth();
+  const hasActiveTeam = Boolean(session?.user.activeTeamId);
 
   return (
     <Tabs
-      initialRouteName="buscar"
+      initialRouteName={hasActiveTeam ? 'agenda' : 'buscar'}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: theme.colors.primary,
@@ -20,6 +23,14 @@ export default function HomeLayout() {
         },
       }}
     >
+      <Tabs.Screen
+        name="agenda"
+        options={{
+          title: 'Agenda',
+          href: hasActiveTeam ? undefined : null,
+          tabBarIcon: ({ color }) => <TabIcon name="agenda" color={color} />,
+        }}
+      />
       <Tabs.Screen
         name="buscar"
         options={{

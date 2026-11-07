@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import {
   Pressable,
   ScrollView,
@@ -11,11 +11,42 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { CalendarIcon } from '../../../shared/components/CalendarIcon';
 import { theme } from '../../../shared/theme/theme';
 import { Brand } from '../components/Brand';
-import { GoogleSignInButton } from '../components/GoogleSignInButton';
+import { GoogleLogin } from '../components/GoogleLogin';
 import { LoginIllustration } from '../components/LoginIllustration';
 
+import { useAuth } from '../AuthContext';
+import { ApiError } from '../api';
+
 export function LoginScreen({ onOpenPreview }: { onOpenPreview?: () => void }) {
-  const [configurationNotice, setConfigurationNotice] = useState(false);
+  const { signIn } = useAuth();
+  const [error, setError] = useState('');
+  const [busy, setBusy] = useState(false);
+  const pending = useRef(false);
+  const submitToken = useCallback(
+    async (idToken: string) => {
+      if (pending.current) return;
+      pending.current = true;
+      setBusy(true);
+      setError('');
+      try {
+        await signIn(idToken);
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 401) {
+          setError('O login foi recusado. Entre com Google novamente.');
+        } else if (error instanceof ApiError && error.status === 429) {
+          setError('Muitas tentativas. Aguarde um minuto e tente novamente.');
+        } else {
+          setError(
+            'Não foi possível iniciar a sessão. Confira a conexão e tente novamente.',
+          );
+        }
+      } finally {
+        pending.current = false;
+        setBusy(false);
+      }
+    },
+    [signIn],
+  );
   const { height } = useWindowDimensions();
 
   return (
@@ -42,18 +73,21 @@ export function LoginScreen({ onOpenPreview }: { onOpenPreview?: () => void }) {
             </Text>
           </View>
           <View style={styles.signIn}>
-            <GoogleSignInButton onPress={() => setConfigurationNotice(true)} />
+            <GoogleLogin
+              disabled={busy}
+              onCredential={submitToken}
+              onError={setError}
+            />
             <Text style={styles.accountNote}>
               Sua conta é criada no primeiro acesso.
             </Text>
-            {configurationNotice && (
+            {(busy || Boolean(error)) && (
               <Text accessibilityLiveRegion="polite" style={styles.notice}>
-                O login com Google estará disponível após configurar a
-                autenticação e conectar o backend.
+                {busy ? 'Entrando…' : error}
               </Text>
             )}
           </View>
-          {onOpenPreview && (
+          {onOpenPreview && !busy && (
             <Pressable
               accessibilityRole="button"
               onPress={onOpenPreview}

@@ -1,0 +1,44 @@
+import cors from '@fastify/cors';
+import rateLimit from '@fastify/rate-limit';
+import Fastify, { LogController } from 'fastify';
+import type { VerifyGoogleIdentity } from './auth/google.js';
+import { authRoutes } from './auth/routes.js';
+import type { PrismaClient } from './generated/prisma/client.js';
+import { ApiError, registerErrors } from './http/errors.js';
+
+type AppOptions = {
+  db: PrismaClient;
+  sessionTtlHours: number;
+  verifyGoogleIdentity: VerifyGoogleIdentity;
+  logger?: boolean;
+  corsOrigins?: string[];
+};
+
+export function buildApp(options: AppOptions) {
+  const app = Fastify({
+    bodyLimit: 16 * 1024,
+    logger: options.logger ?? false,
+    logController: new LogController({ disableRequestLogging: true }),
+  });
+
+  registerErrors(app);
+  if (options.corsOrigins?.length) {
+    app.register(cors, {
+      origin: options.corsOrigins,
+      methods: ['GET', 'POST', 'PATCH'],
+      allowedHeaders: ['Authorization', 'Content-Type'],
+    });
+  }
+  app.register(rateLimit, {
+    global: false,
+    errorResponseBuilder: (_request, context) =>
+      new ApiError(
+        context.statusCode,
+        'RATE_LIMITED',
+        'Muitas tentativas. Tente novamente em instantes.',
+      ),
+  });
+  app.register(authRoutes, { ...options, prefix: '/api/v1' });
+
+  return app;
+}

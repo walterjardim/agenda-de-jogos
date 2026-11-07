@@ -1,0 +1,65 @@
+generator client {
+  provider            = "prisma-client"
+  output              = "../src/generated/prisma"
+  importFileExtension = "js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model User {
+  id           String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  googleSub    String        @unique @map("google_sub")
+  email        String
+  name         String
+  timezone     String        @default("America/Sao_Paulo")
+  activeTeamId String?       @map("active_team_id") @db.Uuid
+  createdAt    DateTime      @default(now()) @map("created_at") @db.Timestamptz
+  activeTeam   Team?         @relation("ActiveTeam", fields: [activeTeamId], references: [id], onDelete: SetNull)
+  ownedTeams   Team[]        @relation("TeamOwner")
+  follows      TeamFollow[]
+  sessions     AuthSession[]
+
+  @@index([activeTeamId])
+  @@map("users")
+}
+
+model AuthSession {
+  id        String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId    String    @map("user_id") @db.Uuid
+  tokenHash String    @unique @map("token_hash")
+  expiresAt DateTime  @map("expires_at") @db.Timestamptz
+  revokedAt DateTime? @map("revoked_at") @db.Timestamptz
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId], map: "idx_auth_sessions_user")
+  @@map("auth_sessions")
+}
+
+model Team {
+  id          String       @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  userId      String       @map("user_id") @db.Uuid
+  name        String
+  sport       String
+  category    String
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz
+  owner       User         @relation("TeamOwner", fields: [userId], references: [id], onDelete: Cascade)
+  activeUsers User[]       @relation("ActiveTeam")
+  followers   TeamFollow[]
+
+  @@map("teams")
+}
+
+model TeamFollow {
+  userId    String   @map("user_id") @db.Uuid
+  teamId    String   @map("team_id") @db.Uuid
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  team      Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@id([userId, teamId])
+  @@index([teamId], map: "idx_team_follows_team")
+  @@map("team_follows")
+}

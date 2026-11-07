@@ -1,0 +1,22 @@
+{
+  "expo": {
+    "name": "Agenda de Jogos",
+    "slug": "agenda-de-jogos",
+    "version": "1.0.0",
+    "scheme": "agenda-de-jogos",
+    "plugins": ["expo-router"],
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.agendadejogos.app"
+    },
+    "android": {
+      "package": "com.agendadejogos.app"
+    },
+    "web": {
+      "favicon": "./assets/icon.png"
+    }
+  }
+}

@@ -3,6 +3,21 @@ import type { Athlete, Competition } from '../matches/model';
 
 export type TeamInput = { name: string; sport: string; category: string };
 export type Team = TeamInput & { id: string; createdAt: string };
+export type TeamPage = {
+  data: (Team & { isOwner: boolean })[];
+  nextCursor: string | null;
+};
+
+export function searchTeams(
+  token: string,
+  q: string,
+  mine: boolean,
+  cursor?: string,
+): Promise<TeamPage> {
+  const query = new URLSearchParams({ q, mine: String(mine) });
+  if (cursor) query.set('cursor', cursor);
+  return request(`/teams?${query}`, { token });
+}
 
 export function listOwnedTeams(token: string): Promise<Team[]> {
   return request('/me/teams', { token });

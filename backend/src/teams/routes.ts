@@ -1,6 +1,6 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
-import { createAuthService } from '../auth/service.js';
+import { createAuthService, publicProfile } from '../auth/service.js';
 import type { PrismaClient } from '../generated/prisma/client.js';
 import { ApiError, parseBody } from '../http/errors.js';
 
@@ -12,6 +12,12 @@ const teamBody = z.strictObject({
 const updateBody = teamBody.partial().refine((data) => Object.keys(data).length > 0);
 const params = z.object({ id: z.uuid() });
 const select = { id: true, name: true, sport: true, category: true, createdAt: true } as const;
+const searchQuery = z.strictObject({
+  q: z.string().trim().max(100).default(''),
+  cursor: z.uuid().optional(),
+  limit: z.coerce.number().int().min(1).max(50).default(20),
+  mine: z.enum(['true', 'false']).default('false'),
+});
 
 export async function teamRoutes(
   app: FastifyInstance,
@@ -26,6 +32,54 @@ export async function teamRoutes(
   app.get('/me/teams', async (request) => {
     const { user } = await auth.requireSession(request.headers.authorization);
     return db.team.findMany({ where: { userId: user.id }, select, orderBy: [{ name: 'asc' }, { id: 'asc' }] });
+  });
+
+  app.get('/teams', async (request) => {
+    const { user } = await auth.requireSession(request.headers.authorization);
+    const { q, cursor, limit, mine } = parseBody(searchQuery, request.query);
+    // Escape LIKE wildcards so the search treats the user's text literally.
+    const name = q.replace(/[\\%_]/g, '\\$&');
+    const rows = await db.team.findMany({
+      where: {
+        name: { contains: name, mode: 'insensitive' },
+        ...(cursor ? { id: { gt: cursor } } : {}),
+        ...(mine === 'true' ? { OR: [{ userId: user.id }, { followers: { some: { userId: user.id } } }] } : {}),
+      },
+      select: { ...select, userId: true },
+      orderBy: { id: 'asc' },
+      take: limit + 1,
+    });
+    const data = rows.slice(0, limit).map(({ userId, ...team }) => ({ ...team, isOwner: userId === user.id }));
+    return { data, nextCursor: rows.length > limit ? data.at(-1)!.id : null };
+  });
+
+  app.get('/teams/:id', async (request) => {
+    const { user } = await auth.requireSession(request.headers.authorization);
+    const { id } = parseBody(params, request.params);
+    const team = await db.team.findUnique({ where: { id }, select: { ...select, userId: true } });
+    if (!team) throw new ApiError(404, 'NOT_FOUND', 'Time não encontrado');
+    const { userId, ...details } = team;
+    return { ...details, isOwner: userId === user.id };
+  });
+
+  app.post('/teams/:id/select', async (request) => {
+    const { user } = await auth.requireSession(request.headers.authorization);
+    const { id } = parseBody(params, request.params);
+    return db.$transaction(async (tx) => {
+      // Keep deletion from racing with the follow and profile writes.
+      const teams = await tx.$queryRaw<{ id: string; user_id: string }[]>`
+        SELECT id, user_id FROM teams WHERE id = ${id}::uuid FOR UPDATE
+      `;
+      if (!teams[0]) throw new ApiError(404, 'NOT_FOUND', 'Time não encontrado');
+      if (teams[0].user_id !== user.id) {
+        await tx.teamFollow.upsert({
+          where: { userId_teamId: { userId: user.id, teamId: id } },
+          create: { userId: user.id, teamId: id },
+          update: {},
+        });
+      }
+      return tx.user.update({ where: { id: user.id }, data: { activeTeamId: id }, select: publicProfile });
+    });
   });
 
   app.post('/teams', async (request, reply) => {

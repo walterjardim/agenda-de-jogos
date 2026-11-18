@@ -41,9 +41,7 @@ function teamPath(teamId: string) {
 }
 
 export async function fetchTeam(teamId: string, token: string) {
-  return (await readList<Team>('/teams', token)).find(
-    ({ id }) => id === teamId,
-  );
+  return request(teamPath(teamId), { token }) as Promise<Team>;
 }
 
 export function fetchWeek(

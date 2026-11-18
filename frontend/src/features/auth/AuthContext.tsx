@@ -15,6 +15,7 @@ import {
   loginWithGoogle,
   revokeSession,
   updateTimezone,
+  selectTeam,
 } from './api';
 import { apiUrl } from './config';
 import { signOutGoogle } from './googleSession';
@@ -30,6 +31,7 @@ type Auth = {
   signOut: () => Promise<void>;
   saveTimezone: (timezone: string) => Promise<void>;
   clearDeletedTeam: (token: string, teamId: string) => void;
+  chooseTeam: (id: string) => Promise<void>;
 };
 
 const AuthContext = createContext<Auth | null>(null);
@@ -81,6 +83,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   >('loading');
   const [attempt, setAttempt] = useState(0);
   const activeToken = useRef<string | null>(null);
+  const choosingTeam = useRef(false);
 
   useEffect(() => {
     let active = true;
@@ -167,7 +170,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const user = await updateTimezone(session.sessionToken, timezone);
       setSession((current) =>
         current?.sessionToken === session.sessionToken
-          ? { ...current, user }
+          ? { ...current, user: { ...current.user, timezone: user.timezone } }
           : current,
       );
     } catch (error) {
@@ -175,6 +178,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         await endSession(session.sessionToken);
       }
       throw error;
+    }
+  };
+
+  const chooseTeam = async (id: string) => {
+    if (!session || choosingTeam.current)
+      throw new Error('Seleção indisponível.');
+    choosingTeam.current = true;
+    try {
+      const user = await selectTeam(session.sessionToken, id);
+      if (activeToken.current !== session.sessionToken)
+        throw new Error('Sessão alterada.');
+      setSession((current) =>
+        current?.sessionToken === session.sessionToken
+          ? {
+              ...current,
+              user: { ...current.user, activeTeamId: user.activeTeamId },
+            }
+          : current,
+      );
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401)
+        await endSession(session.sessionToken);
+      throw error;
+    } finally {
+      choosingTeam.current = false;
     }
   };
 
@@ -189,6 +217,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signIn,
         signOut,
         saveTimezone,
+        chooseTeam,
         clearDeletedTeam: (token, teamId) => {
           setSession((current) =>
             current?.sessionToken === token &&

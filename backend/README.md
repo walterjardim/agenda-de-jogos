@@ -83,7 +83,37 @@ Não é necessária uma nova migration para esta funcionalidade.
 
 Após o login, a aba **Meus times** oferece cadastro, edição e exclusão com
 confirmação, além de atualização da lista e tratamento de falhas de conexão.
-A busca pública e a escolha de equipes continuam como uma etapa posterior.
+A aba **Buscar** consulta as equipes cadastradas. **Escolher time** salva a
+preferência e passa a acompanhar a equipe quando ela pertence a outro usuário.
+Na home, **Trocar time** lista equipes próprias e acompanhadas, sem duplicá-las.
+
+### Busca e seleção persistente
+
+| Método e rota | Resultado |
+| --- | --- |
+| `GET /api/v1/teams?q=ajax&limit=20&cursor=<uuid>&mine=true` | `{ data, nextCursor }` com equipes e `isOwner` |
+| `GET /api/v1/teams/:id` | Dados da equipe, sem dados pessoais do proprietário |
+| `POST /api/v1/teams/:id/select` | Perfil com `activeTeamId` atualizado |
+
+Todas as rotas exigem sessão. Na busca, `q` é opcional, tem até 100 caracteres
+e procura um trecho literal do nome sem diferenciar maiúsculas de minúsculas.
+`mine=true` limita aos times próprios ou acompanhados; o padrão é buscar todos.
+`limit` varia de 1 a 50 (padrão 20). A paginação usa UUID crescente, e o cursor
+pode continuar sendo usado se a equipe anterior for excluída.
+
+A seleção verifica a existência da equipe e grava o vínculo de acompanhamento
+e `users.active_team_id` numa única transação. Repetir a escolha não duplica o
+vínculo. Ela não concede permissões de administração. Uma equipe inexistente
+retorna `404`, preservando a escolha anterior.
+
+O último time escolhido permanece ativo mesmo com várias equipes acompanhadas.
+`GET /me` e novos logins retornam essa preferência; o app abre a agenda desse
+time. Sem uma escolha (ou se o time foi excluído), abre a busca. Não há seleção
+automática por ordem alfabética nem por data de cadastro.
+
+A home carrega o time separadamente dos jogos para manter sua identificação e
+a opção de troca disponíveis se a API de jogos falhar. As rotas de jogos ainda
+não estão implementadas neste backend.
 
 ### Comandos
 

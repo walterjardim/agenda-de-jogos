@@ -258,11 +258,16 @@ function Editor({
       } else if (failure instanceof ApiError && failure.status === 403) {
         setError('Somente o criador do time pode alterar esse cadastro.');
       } else if (
-        kind === 'athletes' &&
         failure instanceof ApiError &&
         failure.status === 404
       ) {
-        setError(record ? 'Atleta indisponível neste time.' : 'Time indisponível.');
+        setError(
+          record
+            ? kind === 'athletes'
+              ? 'Atleta indisponível neste time.'
+              : 'Competição indisponível neste time.'
+            : 'Time indisponível.',
+        );
       } else if (
         failure instanceof ApiError &&
         failure.status === 409 &&

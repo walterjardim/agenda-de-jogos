@@ -1,6 +1,32 @@
 import { request } from '../auth/api';
 import type { Athlete, Competition } from '../matches/model';
 
+export type TeamInput = { name: string; sport: string; category: string };
+export type Team = TeamInput & { id: string; createdAt: string };
+
+export function listOwnedTeams(token: string): Promise<Team[]> {
+  return request('/me/teams', { token });
+}
+
+export function saveTeam(
+  token: string,
+  body: TeamInput,
+  id?: string,
+): Promise<Team> {
+  return request(id ? `/teams/${encodeURIComponent(id)}` : '/teams', {
+    method: id ? 'PATCH' : 'POST',
+    token,
+    body,
+  });
+}
+
+export function deleteTeam(token: string, id: string): Promise<void> {
+  return request(`/teams/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+    token,
+  });
+}
+
 export type RecordKind = 'athletes' | 'competitions';
 export type RecordInput = Omit<Athlete, 'id'> | Omit<Competition, 'id'>;
 

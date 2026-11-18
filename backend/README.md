@@ -2,7 +2,7 @@
 
 API REST em Node.js, TypeScript, Fastify e Prisma com PostgreSQL. Esta etapa
 inclui login Google, sessões da API, perfil e preferência do time da agenda.
-As tabelas iniciais de times e seguidores permitem validar a seleção do perfil.
+A gestão de equipes permite cadastrar, listar, editar e excluir times do usuário autenticado.
 
 ## Executar
 
@@ -62,6 +62,30 @@ time, o usuário precisa ser o criador ou seguidor. Novo login preserva ambas as
 preferências. A exclusão da equipe limpa a seleção.
 
 ## Verificação
+
+### Gestão de equipes
+
+Todas as rotas exigem `Authorization: Bearer <sessionToken>`:
+
+| Método e rota | Entrada | Resultado |
+| --- | --- | --- |
+| `GET /api/v1/me/teams` | Sessão | Lista das equipes criadas pelo usuário, ordenada por nome |
+| `POST /api/v1/teams` | `name`, `sport`, `category` | `201` com a equipe salva |
+| `PATCH /api/v1/teams/:id` | Um ou mais dos campos do cadastro | Equipe atualizada |
+| `DELETE /api/v1/teams/:id` | ID UUID | `204` |
+
+Os campos são obrigatórios no cadastro, têm espaços nas extremidades removidos
+e aceitam até 100 caracteres no nome e 60 na modalidade e categoria. O dono é
+sempre obtido da sessão; não pode ser informado pelo cliente. Edição e exclusão
+de equipe inexistente ou de outro usuário retornam `404`. A exclusão remove
+seguidores e limpa o time ativo por meio das relações já existentes no banco.
+Não é necessária uma nova migration para esta funcionalidade.
+
+Após o login, a aba **Meus times** oferece cadastro, edição e exclusão com
+confirmação, além de atualização da lista e tratamento de falhas de conexão.
+A busca pública e a escolha de equipes continuam como uma etapa posterior.
+
+### Comandos
 
 ```powershell
 npm run build

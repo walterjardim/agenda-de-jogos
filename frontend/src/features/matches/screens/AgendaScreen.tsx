@@ -60,13 +60,15 @@ function WeeklyAgenda({ id, timezone, token }: AgendaTeam) {
           }
         />
       </View>
-      {(!token || selectedTeam?.isOwner) && (
+      {selectedTeam && (
         <View style={styles.row}>
           <ActionButton label="Elenco" onPress={() => router.push('/elenco')} />
-          <ActionButton
-            label="Competições"
-            onPress={() => router.push('/competicoes')}
-          />
+          {selectedTeam.isOwner && (
+            <ActionButton
+              label="Competições"
+              onPress={() => router.push('/competicoes')}
+            />
+          )}
         </View>
       )}
       {teamResource.state.status === 'loading' && (

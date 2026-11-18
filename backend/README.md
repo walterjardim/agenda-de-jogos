@@ -115,6 +115,26 @@ A home carrega o time separadamente dos jogos para manter sua identificação e
 a opção de troca disponíveis se a API de jogos falhar. As rotas de jogos ainda
 não estão implementadas neste backend.
 
+### Gestão do elenco
+
+| Método e rota | Entrada | Resultado |
+| --- | --- | --- |
+| `GET /api/v1/teams/:teamId/athletes` | `q`, `status`, `limit` (1 a 50) e `cursor` opaco, opcionais | `{ data, nextCursor }` em ordem de camisa |
+| `POST /api/v1/teams/:teamId/athletes` | `name`, `position`, `shirtNumber` e `status` opcional | `201` com o atleta e seu `teamId` |
+| `PATCH /api/v1/athletes/:id` | Um ou mais campos do cadastro | Atleta atualizado |
+| `DELETE /api/v1/athletes/:id` | ID do atleta | `204` |
+
+O criador do time pode cadastrar, editar e excluir atletas. Seguidores podem
+consultar o elenco. Alterações solicitadas por seguidores retornam `403`.
+Recursos inexistentes ou de equipes sem vínculo retornam `404`. A camisa é
+um inteiro de 0 a 999 e precisa ser única no time. Números em uso retornam
+`409 CONFLICT`. O nome aceita de 1 a 80 caracteres, a posição é obrigatória
+e o status é `active` (padrão), `injured` ou `suspended`. O filtro `q`
+busca por trecho do nome sem diferenciar maiúsculas de minúsculas.
+
+Aplique a migration de elenco com `npm run db:migrate` antes de iniciar a
+API com o novo código.
+
 ### Comandos
 
 ```powershell

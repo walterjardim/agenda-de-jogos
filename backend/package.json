@@ -12,7 +12,7 @@
     "db:migrate:dev": "prisma migrate dev",
     "dev": "tsx watch src/server.ts",
     "typecheck": "tsc --noEmit",
-    "build": "prisma generate && tsc",
+    "build": "npm ci && prisma generate && tsc",
     "start": "node dist/server.js",
     "test": "prisma generate && tsx --test test/*.test.ts"
   },

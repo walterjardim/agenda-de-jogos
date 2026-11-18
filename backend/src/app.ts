@@ -1,6 +1,7 @@
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import Fastify, { LogController } from 'fastify';
+import { athleteRoutes } from './athletes/routes.js';
 import type { VerifyGoogleIdentity } from './auth/google.js';
 import { authRoutes } from './auth/routes.js';
 import { teamRoutes } from './teams/routes.js';
@@ -41,6 +42,7 @@ export function buildApp(options: AppOptions) {
   });
   app.register(authRoutes, { ...options, prefix: '/api/v1' });
   app.register(teamRoutes, { ...options, prefix: '/api/v1' });
+  app.register(athleteRoutes, { ...options, prefix: '/api/v1' });
 
   return app;
 }

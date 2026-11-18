@@ -48,8 +48,22 @@ model Team {
   owner       User         @relation("TeamOwner", fields: [userId], references: [id], onDelete: Cascade)
   activeUsers User[]       @relation("ActiveTeam")
   followers   TeamFollow[]
+  athletes    Athlete[]
 
   @@map("teams")
+}
+
+model Athlete {
+  id          String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  teamId      String @map("team_id") @db.Uuid
+  name        String
+  position    String
+  shirtNumber Int    @map("shirt_number")
+  status      String @default("active")
+  team        Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@unique([teamId, shirtNumber])
+  @@map("athletes")
 }
 
 model TeamFollow {

@@ -135,6 +135,30 @@ busca por trecho do nome sem diferenciar maiúsculas de minúsculas.
 Aplique a migration de elenco com `npm run db:migrate` antes de iniciar a
 API com o novo código.
 
+### Gestão de competições
+
+Conforme a seção 4.5 do MVP, cada competição pertence a um time e recebe
+somente `name` (1 a 120 caracteres). Campos financeiros são rejeitados.
+
+| Método e rota | Resultado |
+| --- | --- |
+| `GET /api/v1/teams/:teamId/competitions?limit=50&cursor=<opaco>` | `{ data, nextCursor }`, com `id`, `teamId` e `name` |
+| `POST /api/v1/teams/:teamId/competitions` | `201` com a competição |
+| `PATCH /api/v1/competitions/:id` | `200` com a competição renomeada |
+| `DELETE /api/v1/competitions/:id` | `204` |
+
+Todas exigem sessão. Criadores gerenciam os cadastros e seguidores podem
+consultá-los. Alterações por seguidores retornam `403 FORBIDDEN`; recursos
+inexistentes ou de times sem vínculo retornam `404 NOT_FOUND`.
+A paginação usa UUID crescente codificado em base64url e continua válida
+quando a competição do cursor é excluída. A tela apresenta os nomes em
+ordem alfabética e recarrega ao retornar do cadastro.
+
+Execute `npm run db:migrate` para aplicar a migration de competições.
+O backend atual ainda não tem a tabela de jogos. A relação futura deve usar
+`ON DELETE SET NULL` em `matches.competition_id`, como define o MVP,
+preservando a taxa do jogo.
+
 ### Comandos
 
 ```powershell

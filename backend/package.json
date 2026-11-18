@@ -14,7 +14,7 @@
     "typecheck": "tsc --noEmit",
     "build": "prisma generate && tsc",
     "start": "node dist/server.js",
-    "test": "prisma generate && tsx --test test/auth.test.ts"
+    "test": "prisma generate && tsx --test test/*.test.ts"
   },
   "dependencies": {
     "@fastify/cors": "^11.4.1",

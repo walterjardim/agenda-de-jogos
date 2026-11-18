@@ -29,6 +29,7 @@ type Auth = {
   signIn: (idToken: string) => Promise<void>;
   signOut: () => Promise<void>;
   saveTimezone: (timezone: string) => Promise<void>;
+  clearDeletedTeam: (token: string, teamId: string) => void;
 };
 
 const AuthContext = createContext<Auth | null>(null);
@@ -188,6 +189,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signIn,
         signOut,
         saveTimezone,
+        clearDeletedTeam: (token, teamId) => {
+          setSession((current) =>
+            current?.sessionToken === token &&
+            current.user.activeTeamId === teamId
+              ? { ...current, user: { ...current.user, activeTeamId: null } }
+              : current,
+          );
+        },
       }}
     >
       {children}

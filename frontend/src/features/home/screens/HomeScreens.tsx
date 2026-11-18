@@ -4,6 +4,7 @@ import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { theme } from '../../../shared/theme/theme';
 import { ApiError, type Profile } from '../../auth/api';
 import { useAuth } from '../../auth/AuthContext';
+import { ManageTeamsScreen } from '../../teams/ManageTeamsScreen';
 import { usePreview } from '../PreviewContext';
 
 import { previewTeam as team, previewTimezone } from '../../matches/preview';
@@ -107,9 +108,9 @@ export function MyTeamsScreen() {
 
   if (session) {
     return (
-      <HomeScreen
-        title="Meus times"
-        description="Sua lista de times estará disponível após a integração do serviço de equipes."
+      <ManageTeamsScreen
+        key={session.sessionToken}
+        token={session.sessionToken}
       />
     );
   }

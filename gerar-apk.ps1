@@ -42,6 +42,9 @@ try {
     if (-not (Test-Path -LiteralPath $apk -PathType Leaf)) {
         throw "O APK esperado nao foi encontrado em $apk."
     }
+    $nomeApk = "Agenda-de-Jogos-$(Get-Date -Format 'yyyyMMdd-HHmmss').apk"
+    Rename-Item -LiteralPath $apk -NewName $nomeApk
+    $apk = Join-Path (Split-Path -Parent $apk) $nomeApk
     @{
         source = $origem
         commit = $commit

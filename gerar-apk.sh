@@ -53,4 +53,8 @@ if [[ ! -f "$apk" ]]; then
     printf 'O APK esperado não foi encontrado em %s.\n' "$apk" >&2
     exit 1
 fi
+nome_apk="Agenda-de-Jogos-$(date +%Y%m%d-%H%M%S).apk"
+apk_final="$(dirname -- "$apk")/$nome_apk"
+mv -- "$apk" "$apk_final"
+apk="$apk_final"
 printf 'APK gerado em %s\n' "$apk"

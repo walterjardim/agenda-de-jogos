@@ -212,7 +212,7 @@ function Editor({
           return;
         }
         if (
-          records.some(
+          !team.token && records.some(
             (item) =>
               'shirtNumber' in item &&
               item.id !== record?.id &&
@@ -258,6 +258,12 @@ function Editor({
       } else if (failure instanceof ApiError && failure.status === 403) {
         setError('Somente o criador do time pode alterar esse cadastro.');
       } else if (
+        kind === 'athletes' &&
+        failure instanceof ApiError &&
+        failure.status === 404
+      ) {
+        setError(record ? 'Atleta indisponível neste time.' : 'Time indisponível.');
+      } else if (
         failure instanceof ApiError &&
         failure.status === 409 &&
         kind === 'athletes'
@@ -296,6 +302,7 @@ function Editor({
           <Field
             label="Número da camisa"
             value={shirt}
+            maxLength={3}
             onChangeText={setShirt}
             keyboardType="number-pad"
             editable={!busy && !confirming}
@@ -318,7 +325,9 @@ function Editor({
         <View style={styles.card}>
           <Text style={styles.label}>
             {kind === 'athletes'
-              ? 'Excluir este atleta do elenco e das convocações?'
+              ? team.token
+                ? 'Excluir este atleta do elenco?'
+                : 'Excluir este atleta do elenco e das convocações?'
               : 'Excluir esta competição? Os jogos vinculados ficarão sem competição.'}
           </Text>
           <ActionButton

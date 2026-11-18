@@ -4,12 +4,31 @@ Base em React Native, Expo SDK 57 e TypeScript estrito. A tela inicial é o logi
 
 ## Executar
 
-Use Node.js 24, instale as dependências e copie o arquivo de ambiente na pasta
-`frontend`.
+Use Node.js 24. Na raiz do repositório, escolha os comandos do seu terminal
+para instalar as dependências e criar o arquivo de ambiente.
+
+### PowerShell
 
 ```powershell
+Set-Location frontend
 npm ci
-Copy-Item .env.example .env
+if (-not (Test-Path .env)) { Copy-Item .env.example .env }
+```
+
+### Git Bash
+
+```bash
+cd frontend
+npm ci
+[ -f .env ] || cp .env.example .env
+```
+
+Se o Git Bash encontrar o Node.js, mas o comando `npm` falhar, você pode chamar
+o npm da instalação padrão do Node.js para Windows pelo caminho abaixo.
+Use o mesmo prefixo para rodar `run web`, `start` ou os demais scripts.
+
+```bash
+node "/c/Program Files/nodejs/node_modules/npm/bin/npm-cli.js" ci
 ```
 
 Preencha `EXPO_PUBLIC_API_URL` com a URL da API incluindo `/api/v1`. Para o
@@ -41,6 +60,45 @@ de desenvolvimento com um build já instalado, use `npm start`.
 
 ## Builds instaláveis
 
+### APK local no Windows (ARM64)
+
+Use Node.js 24, JDK 17 e o Android SDK. Aponte `JAVA_HOME` para o JDK e
+`ANDROID_HOME` para o SDK. No SDK Manager, instale a plataforma Android 36,
+Build-Tools 36.0.0, Platform-Tools, NDK 27.1.12297006 e CMake 3.22.1, e aceite
+as licenças. Com o `sdkmanager` das ferramentas de linha de comando no `PATH`,
+você pode instalar esses componentes pelo terminal.
+
+```sh
+sdkmanager --licenses
+sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools" "ndk;27.1.12297006" "cmake;3.22.1"
+```
+
+Com as dependências instaladas e o `.env` configurado conforme a seção
+**Executar**, rode os comandos abaixo a partir de `frontend`.
+
+**PowerShell**
+
+```powershell
+npx expo prebuild --platform android --no-install
+.\android\gradlew.bat -p android :app:assembleRelease '-PreactNativeArchitectures=arm64-v8a'
+```
+
+**Git Bash**
+
+```bash
+npx expo prebuild --platform android --no-install
+./android/gradlew.bat -p android :app:assembleRelease '-PreactNativeArchitectures=arm64-v8a'
+```
+
+O APK sai em `frontend/android/app/build/outputs/apk/release/app-release.apk`.
+Copie o arquivo para o celular e abra-o para instalar. O build inclui o bundle
+JavaScript e roda sem o Metro. O projeto Android gerado pelo Expo usa a chave de
+teste para a assinatura local. Para usar o login Google, cadastre o SHA-1 dessa
+chave no cliente OAuth Android. A prévia com dados de exemplo fica restrita ao
+modo de desenvolvimento no código do repositório.
+
+### EAS na nuvem
+
 O `eas.json` inclui perfis de desenvolvimento, APK para testes e produção. Configure as variáveis públicas para o ambiente de build no EAS.
 
 ```sh
@@ -71,9 +129,15 @@ Componentes funcionais, propriedades tipadas, estilos locais e separação por f
 ## Prévia da home
 
 Em desenvolvimento, abra **Prévia da home** na tela inicial. Use **Buscar** para
-encontrar e seguir o Ajax. Em **Meus times**, é possível deixar de seguir. Em
+encontrar e seguir o Ajax. Toque em **Escolher time** para abrir a agenda da
+semana e em **Novo jogo** para cadastrar uma partida. Para vê-la na agenda,
+use uma data da semana exibida. Abra **Ver ficha** para editar, excluir ou
+compartilhar o jogo. Em **Selecionar atletas**, marque o elenco de teste e salve
+ou abra a prévia da convocação. A agenda também dá acesso a **Elenco** e
+**Competições** para cadastrar, editar ou excluir registros de teste. Em
+**Meus times**, é possível deixar de seguir. Em
 **Perfil**, use **Sair da prévia** para voltar ao login. Os dados são locais e o
-seguimento é descartado ao sair. O acesso à prévia fica restrito a desenvolvimento.
+seguimento e os jogos de teste são descartados ao sair. O acesso à prévia fica restrito a desenvolvimento.
 
 ## Sessão e perfil
 
@@ -85,7 +149,7 @@ Ao restaurar a sessão, o app consulta `GET /me`. O perfil salva o fuso em
 
 O app abre **Buscar times** quando a conta ainda não tem time selecionado e
 **Agenda da semana** quando o perfil já tem um time. A busca, a escolha de
-times e a listagem de jogos da conta dependem dos respectivos endpoints.
+times, a listagem e o cadastro de jogos da conta dependem dos respectivos endpoints.
 O Ajax de exemplo aparece na prévia de desenvolvimento.
 
 ## Referências

@@ -1,13 +1,12 @@
 import { Tabs } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAuth } from '../../features/auth/AuthContext';
+import { useAgendaTeam } from '../../features/matches/hooks';
 import { TabIcon } from '../../features/home/components/TabIcon';
 import { theme } from '../../shared/theme/theme';
 
 export default function HomeLayout() {
   const { bottom } = useSafeAreaInsets();
-  const { session } = useAuth();
-  const hasActiveTeam = Boolean(session?.user.activeTeamId);
+  const hasActiveTeam = Boolean(useAgendaTeam());
 
   return (
     <Tabs

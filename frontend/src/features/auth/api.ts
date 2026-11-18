@@ -17,7 +17,7 @@ export class ApiError extends Error {
   }
 }
 
-async function request(
+export async function request(
   path: string,
   {
     method = 'GET',

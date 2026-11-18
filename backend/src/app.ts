@@ -25,7 +25,7 @@ export function buildApp(options: AppOptions) {
   if (options.corsOrigins?.length) {
     app.register(cors, {
       origin: options.corsOrigins,
-      methods: ['GET', 'POST', 'PATCH'],
+      methods: ['GET', 'POST', 'PATCH', 'PUT', 'DELETE'],
       allowedHeaders: ['Authorization', 'Content-Type'],
     });
   }

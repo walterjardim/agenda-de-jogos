@@ -1,80 +1,27 @@
-import { Redirect, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { type ReactNode, useRef, useState } from 'react';
-import {
-  Pressable,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { theme } from '../../../shared/theme/theme';
 import { ApiError, type Profile } from '../../auth/api';
 import { useAuth } from '../../auth/AuthContext';
 import { usePreview } from '../PreviewContext';
 
-const team = { name: 'Ajax', modality: 'Futsal', category: 'Sub-11' };
+import { previewTeam as team, previewTimezone } from '../../matches/preview';
+import { ActionButton, HomeScreen } from '../components/HomeScreen';
 
-function HomeScreen({
-  title,
-  description,
-  children,
-}: {
-  title: string;
-  description: string;
-  children?: ReactNode;
-}) {
-  const { session } = useAuth();
+function ChoosePreviewTeam() {
+  const router = useRouter();
+  const { choosePreviewTeam } = usePreview();
 
   return (
-    <SafeAreaView edges={['top', 'left', 'right']} style={styles.screen}>
-      <ScrollView
-        contentContainerStyle={styles.scroll}
-        keyboardShouldPersistTaps="handled"
-      >
-        <View style={styles.content}>
-          <Text style={styles.eyebrow}>
-            {session ? 'Agenda de Jogos' : 'Agenda de Jogos · Prévia'}
-          </Text>
-          <Text accessibilityRole="header" style={styles.title}>
-            {title}
-          </Text>
-          <Text style={styles.description}>{description}</Text>
-          {children}
-        </View>
-      </ScrollView>
-    </SafeAreaView>
-  );
-}
-
-function ActionButton({
-  label,
-  onPress,
-  primary = false,
-  disabled = false,
-}: {
-  label: string;
-  onPress: () => void;
-  primary?: boolean;
-  disabled?: boolean;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ disabled }}
-      disabled={disabled}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.button,
-        primary && styles.primaryButton,
-        (pressed || disabled) && styles.pressed,
-      ]}
-    >
-      <Text style={[styles.buttonLabel, primary && styles.primaryButtonLabel]}>
-        {label}
-      </Text>
-    </Pressable>
+    <ActionButton
+      label="Escolher time"
+      primary
+      onPress={() => {
+        choosePreviewTeam();
+        router.navigate('/agenda');
+      }}
+    />
   );
 }
 
@@ -131,9 +78,12 @@ export function SearchTeamsScreen() {
       {matches ? (
         <TeamCard>
           {followingAjax ? (
-            <Text accessibilityLiveRegion="polite" style={styles.following}>
-              Seguindo
-            </Text>
+            <>
+              <Text accessibilityLiveRegion="polite" style={styles.following}>
+                Seguindo
+              </Text>
+              <ChoosePreviewTeam />
+            </>
           ) : (
             <ActionButton
               label="Seguir"
@@ -171,6 +121,7 @@ export function MyTeamsScreen() {
     >
       {followingAjax ? (
         <TeamCard>
+          <ChoosePreviewTeam />
           <ActionButton
             label="Deixar de seguir"
             onPress={() => setFollowingAjax(false)}
@@ -196,7 +147,7 @@ function ProfilePreviewScreen() {
     >
       <View style={styles.card}>
         <Text style={styles.cardTitle}>Fuso horário</Text>
-        <Text style={styles.description}>São Paulo</Text>
+        <Text style={styles.description}>{previewTimezone}</Text>
       </View>
       <ActionButton label="Sair da prévia" onPress={closePreview} />
     </HomeScreen>
@@ -290,36 +241,7 @@ export function ProfileScreen() {
   );
 }
 
-export function AgendaScreen() {
-  const { session } = useAuth();
-  const router = useRouter();
-  if (!session?.user.activeTeamId) return <Redirect href="/buscar" />;
-
-  return (
-    <HomeScreen
-      title="Agenda da semana"
-      description="A agenda estará disponível após a integração do serviço de jogos."
-    >
-      <ActionButton
-        label="Trocar time"
-        onPress={() => router.navigate('/meus-times')}
-      />
-    </HomeScreen>
-  );
-}
-
 const styles = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: theme.colors.background },
-  scroll: { alignItems: 'center' },
-  content: {
-    width: '100%',
-    maxWidth: 460,
-    paddingHorizontal: 24,
-    paddingVertical: 32,
-    gap: 16,
-  },
-  eyebrow: { color: theme.colors.primary, fontSize: 14, fontWeight: '700' },
-  title: { color: theme.colors.text, fontSize: 30, fontWeight: '800' },
   description: { color: theme.colors.muted, fontSize: 16, lineHeight: 23 },
   search: {
     minHeight: 52,
@@ -352,24 +274,6 @@ const styles = StyleSheet.create({
   badgeText: { color: theme.colors.white, fontWeight: '800' },
   teamInfo: { flex: 1 },
   cardTitle: { color: theme.colors.text, fontSize: 18, fontWeight: '800' },
-  button: {
-    alignSelf: 'flex-start',
-    minHeight: 48,
-    justifyContent: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.white,
-  },
-  primaryButton: {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
-  },
-  buttonLabel: { color: theme.colors.text, fontSize: 16, fontWeight: '700' },
-  primaryButtonLabel: { color: theme.colors.white },
-  pressed: { opacity: 0.8 },
   following: { color: theme.colors.muted, fontSize: 16, fontWeight: '700' },
   empty: { color: theme.colors.muted, fontSize: 16, lineHeight: 23 },
 });

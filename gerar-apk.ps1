@@ -1,7 +1,16 @@
+param(
+    [string]$Destino = (Join-Path 'C:\aj-apk' (Get-Date -Format 'yyyyMMdd-HHmmss'))
+)
+
 $ErrorActionPreference = 'Stop'
 
-$origem = 'C:\Users\wojn\Development\workspace\Pessoal\Agenda-de-Jogos\agenda-de-jogos\frontend'
-$destino = 'C:\Desenvolvimento\frontend'
+$origem = Join-Path $PSScriptRoot 'frontend'
+$destino = [System.IO.Path]::GetFullPath($Destino)
+$commit = git -C $PSScriptRoot rev-parse HEAD
+if ($LASTEXITCODE -ne 0) { throw 'Nao foi possivel identificar o commit de origem.' }
+Write-Host "Origem: $origem"
+Write-Host "Commit: $commit (inclui alteracoes locais, se houver)"
+Write-Host "Pasta nova de build: $destino"
 
 if (-not (Test-Path -LiteralPath (Join-Path $origem 'android\gradlew.bat') -PathType Leaf)) {
     throw "Gradle wrapper nao encontrado em $origem\android."
@@ -33,6 +42,13 @@ try {
     if (-not (Test-Path -LiteralPath $apk -PathType Leaf)) {
         throw "O APK esperado nao foi encontrado em $apk."
     }
+    @{
+        source = $origem
+        commit = $commit
+        builtAt = (Get-Date).ToString('o')
+        apk = $apk
+        sha256 = (Get-FileHash -LiteralPath $apk -Algorithm SHA256).Hash
+    } | ConvertTo-Json | Set-Content -LiteralPath "$apk.json" -Encoding utf8
     Write-Host "APK gerado em $apk"
 }
 finally {

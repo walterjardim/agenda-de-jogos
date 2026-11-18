@@ -13,8 +13,8 @@ fi
 raiz=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
 origem="$raiz/frontend"
 case "$OSTYPE" in
-    msys*) destino_padrao=/c/Desenvolvimento/frontend ;;
-    *) destino_padrao="$HOME/Desenvolvimento/frontend" ;;
+    msys*) destino_padrao="/c/aj-apk/$(date +%Y%m%d-%H%M%S)" ;;
+    *) destino_padrao="/C/Desenvolvimento/apk" ;;
 esac
 destino=${1:-$destino_padrao}
 
@@ -23,8 +23,7 @@ if [[ ! -f "$origem/android/gradlew" ]]; then
     exit 1
 fi
 if [[ -e "$destino" || -L "$destino" ]]; then
-    printf 'O destino %s já existe. Escolha outro caminho ou renomeie a pasta.\n' "$destino" >&2
-    exit 1
+    rm -rf "$destino"
 fi
 command -v npm >/dev/null || { printf 'npm não encontrado no PATH.\n' >&2; exit 1; }
 command -v tar >/dev/null || { printf 'tar não encontrado no PATH.\n' >&2; exit 1; }

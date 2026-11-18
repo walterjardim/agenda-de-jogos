@@ -49,8 +49,19 @@ model Team {
   activeUsers User[]       @relation("ActiveTeam")
   followers   TeamFollow[]
   athletes    Athlete[]
+  competitions Competition[]
 
   @@map("teams")
+}
+
+model Competition {
+  id     String @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  teamId String @map("team_id") @db.Uuid
+  name   String
+  team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([teamId, id])
+  @@map("competitions")
 }
 
 model Athlete {

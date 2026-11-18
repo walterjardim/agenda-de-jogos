@@ -16,16 +16,19 @@ import { previewTeam } from '../preview';
 function WeeklyAgenda({ id, timezone, token }: AgendaTeam) {
   const router = useRouter();
   const { previewMatches } = usePreview();
+  const loadTeam = useCallback(
+    async () => (token ? fetchTeam(id, token) : previewTeam),
+    [id, token],
+  );
+  const teamResource = useMatchResource(loadTeam);
+  const selectedTeam =
+    teamResource.state.status === 'ready' ? teamResource.state.data : null;
   const load = useCallback(async () => {
     const week = weekInTimezone(timezone);
-    const [team, matches] = token
-      ? await Promise.all([
-          fetchTeam(id, token),
-          fetchWeek(id, token, week.from, week.to),
-        ])
-      : [previewTeam, previewMatches];
-    if (!team) throw new Error('Time selecionado indisponível.');
-    return { team, week, matches: gamesInWeek(matches, week, timezone) };
+    const matches = token
+      ? await fetchWeek(id, token, week.from, week.to)
+      : previewMatches;
+    return { week, matches: gamesInWeek(matches, week, timezone) };
   }, [id, previewMatches, timezone, token]);
   const { state, retry } = useMatchResource(load);
   const data = state.status === 'ready' ? state.data : null;
@@ -34,30 +37,50 @@ function WeeklyAgenda({ id, timezone, token }: AgendaTeam) {
     <HomeScreen
       title="Agenda da semana"
       description={
-        data ? `${data.team.name} · ${data.team.category}` : undefined
+        selectedTeam
+          ? `${selectedTeam.name} · ${selectedTeam.category}`
+          : undefined
       }
     >
       <Text style={styles.text}>
         {(data?.week ?? weekInTimezone(timezone)).label}
       </Text>
       <View style={styles.row}>
-        <ActionButton
-          label="Novo jogo"
-          primary
-          onPress={() => router.push('/novo-jogo')}
-        />
+        {(!token || selectedTeam?.isOwner) && (
+          <ActionButton
+            label="Novo jogo"
+            primary
+            onPress={() => router.push('/novo-jogo')}
+          />
+        )}
         <ActionButton
           label="Trocar time"
-          onPress={() => router.navigate('/meus-times')}
+          onPress={() =>
+            router.navigate(token ? '/trocar-time' : '/meus-times')
+          }
         />
       </View>
-      <View style={styles.row}>
-        <ActionButton label="Elenco" onPress={() => router.push('/elenco')} />
-        <ActionButton
-          label="Competições"
-          onPress={() => router.push('/competicoes')}
-        />
-      </View>
+      {(!token || selectedTeam?.isOwner) && (
+        <View style={styles.row}>
+          <ActionButton label="Elenco" onPress={() => router.push('/elenco')} />
+          <ActionButton
+            label="Competições"
+            onPress={() => router.push('/competicoes')}
+          />
+        </View>
+      )}
+      {teamResource.state.status === 'loading' && (
+        <Text style={styles.text}>Carregando time escolhido…</Text>
+      )}
+      {teamResource.state.status === 'error' && (
+        <>
+          <Text style={styles.text}>
+            Não foi possível carregar o time escolhido. Tente novamente ou
+            troque de time.
+          </Text>
+          <ActionButton label="Recarregar time" onPress={teamResource.retry} />
+        </>
+      )}
       {state.status === 'loading' && <LoadingMatches />}
       {state.status === 'error' && (
         <MatchLoadError error={state.error} retry={retry} />
@@ -70,7 +93,7 @@ function WeeklyAgenda({ id, timezone, token }: AgendaTeam) {
       {data?.matches.map((match) => (
         <View key={match.id} style={styles.card}>
           <Text accessibilityRole="header" style={styles.title}>
-            {data.team.name} × {match.opponent}
+            {selectedTeam?.name ?? 'Time'} × {match.opponent}
           </Text>
           <Text style={styles.label}>
             Jogo · {formatGameTime(match.startsAt, timezone)}

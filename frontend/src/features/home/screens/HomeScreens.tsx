@@ -5,6 +5,7 @@ import { theme } from '../../../shared/theme/theme';
 import { ApiError, type Profile } from '../../auth/api';
 import { useAuth } from '../../auth/AuthContext';
 import { ManageTeamsScreen } from '../../teams/ManageTeamsScreen';
+import { ChooseTeamScreen } from '../../teams/ChooseTeamScreen';
 import { usePreview } from '../PreviewContext';
 
 import { previewTeam as team, previewTimezone } from '../../matches/preview';
@@ -53,9 +54,9 @@ export function SearchTeamsScreen() {
 
   if (session) {
     return (
-      <HomeScreen
-        title="Buscar times"
-        description="A busca e a escolha de time estarão disponíveis após a integração do serviço de equipes."
+      <ChooseTeamScreen
+        key={session.sessionToken}
+        token={session.sessionToken}
       />
     );
   }

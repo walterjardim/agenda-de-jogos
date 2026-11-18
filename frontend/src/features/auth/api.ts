@@ -115,3 +115,12 @@ export async function updateTimezone(token: string, timezone: string) {
 export async function revokeSession(token: string) {
   await request('/auth/logout', { method: 'POST', token });
 }
+
+export async function selectTeam(token: string, id: string) {
+  return profile(
+    await request(`/teams/${encodeURIComponent(id)}/select`, {
+      method: 'POST',
+      token,
+    }),
+  );
+}

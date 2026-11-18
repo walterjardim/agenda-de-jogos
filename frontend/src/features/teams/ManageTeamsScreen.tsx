@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { useRouter } from 'expo-router';
 import { StyleSheet, Text, TextInput, View } from 'react-native';
 import { theme } from '../../shared/theme/theme';
 import { ApiError } from '../auth/api';
@@ -20,6 +21,7 @@ const fields = [
 ] as const;
 
 export function ManageTeamsScreen({ token }: { token: string }) {
+  const router = useRouter();
   const { invalidateSession, clearDeletedTeam } = useAuth();
   const [teams, setTeams] = useState<Team[]>([]);
   const [loading, setLoading] = useState(true);
@@ -119,6 +121,11 @@ export function ManageTeamsScreen({ token }: { token: string }) {
       title="Meus times"
       description="Cadastre e gerencie as equipes que você administra."
     >
+      <ActionButton
+        label="Escolher ou trocar time"
+        disabled={busy}
+        onPress={() => router.push('/trocar-time')}
+      />
       {!!notice && (
         <Text accessibilityLiveRegion="polite" style={styles.text}>
           {notice}

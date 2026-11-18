@@ -48,6 +48,7 @@ function Navigation() {
         </Stack.Protected>
         <Stack.Protected guard={canOpenHome}>
           <Stack.Screen name="(home)" />
+          <Stack.Screen name="trocar-time" />
           <Stack.Screen name="novo-jogo" />
           <Stack.Screen name="jogo/[id]" />
           <Stack.Screen name="editar-jogo/[id]" />

@@ -75,8 +75,26 @@ test('persiste CRUD, isola proprietários e limpa seguidores e seleção ao excl
   const updated = await app.inject({ method: 'PATCH', url: `/api/v1/teams/${id}`, headers: ownerHeaders, payload: { name: 'Ajax atualizado' } });
   assert.equal(updated.statusCode, 200);
   assert.equal((await db.team.findUniqueOrThrow({ where: { id } })).name, 'Ajax atualizado');
-  await db.teamFollow.create({ data: { userId: other.user.id, teamId: id } });
-  await db.user.update({ where: { id: other.user.id }, data: { activeTeamId: id } });
+  const second = await app.inject({ method: 'POST', url: '/api/v1/teams', headers: ownerHeaders, payload: { ...input, name: 'Segundo time' } });
+  const secondId = second.json().id;
+  for (const teamId of [id, secondId, secondId]) {
+    const chosen = await app.inject({ method: 'POST', url: `/api/v1/teams/${teamId}/select`, headers: otherHeaders });
+    assert.equal(chosen.statusCode, 200);
+    assert.equal(chosen.json().activeTeamId, teamId);
+  }
+  assert.equal(await db.teamFollow.count({ where: { userId: other.user.id } }), 2);
+  assert.equal((await db.user.findUniqueOrThrow({ where: { id: other.user.id } })).activeTeamId, secondId);
+  const restored = await app.inject({ method: 'GET', url: '/api/v1/me', headers: otherHeaders });
+  assert.equal(restored.json().activeTeamId, secondId);
+  assert.equal((await login('other')).user.activeTeamId, secondId);
+  const mine = await app.inject({ method: 'GET', url: '/api/v1/teams?mine=true', headers: otherHeaders });
+  assert.deepEqual(new Set(mine.json().data.map((team: { id: string }) => team.id)), new Set([id, secondId]));
+  const search = await app.inject({ method: 'GET', url: '/api/v1/teams?q=AJAX%20ATUALIZADO', headers: otherHeaders });
+  assert.ok(search.json().data.some((team: { id: string }) => team.id === id));
+  const missing = await app.inject({ method: 'POST', url: `/api/v1/teams/${randomUUID()}/select`, headers: otherHeaders });
+  assert.equal(missing.statusCode, 404);
+  assert.equal((await db.user.findUniqueOrThrow({ where: { id: other.user.id } })).activeTeamId, secondId);
+  await app.inject({ method: 'POST', url: `/api/v1/teams/${id}/select`, headers: otherHeaders });
   assert.equal((await app.inject({ method: 'DELETE', url: `/api/v1/teams/${id}`, headers: ownerHeaders })).statusCode, 204);
   assert.equal(await db.team.findUnique({ where: { id } }), null);
   assert.equal(await db.teamFollow.count({ where: { teamId: id } }), 0);

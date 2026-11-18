@@ -3,7 +3,7 @@ import type { PrismaClient } from '../generated/prisma/client.js';
 import { ApiError } from '../http/errors.js';
 import type { GoogleIdentity } from './google.js';
 
-const publicProfile = {
+export const publicProfile = {
   id: true,
   name: true,
   email: true,

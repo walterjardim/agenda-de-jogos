@@ -115,10 +115,21 @@ export function arrivalFor(startsAt: string) {
   return Temporal.Instant.from(startsAt).subtract({ minutes: 60 }).toString();
 }
 
-export function formatGameTime(instant: string, timezone: string) {
+export function formatGameTime(
+  instant: string,
+  timezone: string,
+  includeDate = true,
+) {
   const local = Temporal.Instant.from(instant).toZonedDateTimeISO(timezone);
   const time = local.toPlainTime().toString({ smallestUnit: 'minute' });
-  return `${formatDate(local.toPlainDate())} · ${time}`;
+  return includeDate ? `${formatDate(local.toPlainDate())} · ${time}` : time;
+}
+
+export function gameDate(instant: string, timezone: string) {
+  return Temporal.Instant.from(instant)
+    .toZonedDateTimeISO(timezone)
+    .toPlainDate()
+    .toString();
 }
 
 export function gamesInWeek(
@@ -128,10 +139,7 @@ export function gamesInWeek(
 ) {
   return matches
     .filter(({ startsAt }) => {
-      const day = Temporal.Instant.from(startsAt)
-        .toZonedDateTimeISO(timezone)
-        .toPlainDate()
-        .toString();
+      const day = gameDate(startsAt, timezone);
       return day >= week.from && day <= week.to;
     })
     .sort(

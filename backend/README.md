@@ -155,9 +155,23 @@ quando a competição do cursor é excluída. A tela apresenta os nomes em
 ordem alfabética e recarrega ao retornar do cadastro.
 
 Execute `npm run db:migrate` para aplicar a migration de competições.
-O backend atual ainda não tem a tabela de jogos. A relação futura deve usar
-`ON DELETE SET NULL` em `matches.competition_id`, como define o MVP,
-preservando a taxa do jogo.
+A exclusão de uma competição limpa `matches.competition_id` e preserva a
+taxa dos jogos.
+
+### Jogos na agenda
+
+`GET /api/v1/teams/:teamId/matches?from=2026-11-19&to=2026-11-19` lista
+os jogos de um dia inteiro. O mesmo endpoint recebe o intervalo de segunda a
+domingo para a Home. As datas são inclusivas no fuso do perfil. O resultado
+vem em ordem de início e ID, com limite de até 50 registros e resposta
+`{ data, nextCursor }`. Use `upcoming=true` apenas para filtrar jogos
+que ainda não começaram.
+
+Criadores e seguidores podem listar, cadastrar, consultar, editar e excluir
+jogos do time. Para abrir a ficha, use `GET /api/v1/matches/:id`.
+`arrivalAt` é sempre calculado como uma hora antes de `startsAt`.
+Execute `npm run db:migrate` no ambiente do backend para habilitar as
+rotas com a tabela de jogos.
 
 ### Comandos
 

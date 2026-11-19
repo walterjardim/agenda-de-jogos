@@ -50,6 +50,8 @@ model Team {
   followers   TeamFollow[]
   athletes    Athlete[]
   competitions Competition[]
+  matches     Match[]
+  uniformPieces UniformPiece[]
 
   @@map("teams")
 }
@@ -59,6 +61,7 @@ model Competition {
   teamId String @map("team_id") @db.Uuid
   name   String
   team   Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  matches Match[]
 
   @@index([teamId, id])
   @@map("competitions")
@@ -72,9 +75,64 @@ model Athlete {
   shirtNumber Int    @map("shirt_number")
   status      String @default("active")
   team        Team   @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  callups     Callup[]
 
   @@unique([teamId, shirtNumber])
   @@map("athletes")
+}
+
+model UniformPiece {
+  id            String  @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  teamId        String  @map("team_id") @db.Uuid
+  pieceType     String  @map("piece_type")
+  uniformName   String  @map("uniform_name")
+  description   String
+  colorHex      String  @default("#000000") @map("color_hex")
+  isHomeDefault Boolean @default(false) @map("is_home_default")
+  isAwayDefault Boolean @default(false) @map("is_away_default")
+  team          Team    @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  shirts        Match[] @relation("MatchShirt")
+  shorts        Match[] @relation("MatchShorts")
+  socks         Match[] @relation("MatchSocks")
+
+  @@index([teamId, id])
+  @@map("uniform_pieces")
+}
+
+model Match {
+  id                String        @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  teamId            String        @map("team_id") @db.Uuid
+  competitionId     String?       @map("competition_id") @db.Uuid
+  opponent          String
+  startsAt          DateTime      @map("starts_at") @db.Timestamptz(3)
+  location          String?
+  notes             String?
+  isHome            Boolean       @default(true) @map("is_home")
+  shirtPieceId      String?       @map("shirt_piece_id") @db.Uuid
+  shortsPieceId     String?       @map("shorts_piece_id") @db.Uuid
+  socksPieceId      String?       @map("socks_piece_id") @db.Uuid
+  refereeFeeCents   Int?          @map("referee_fee_cents")
+  hasSavedCallup    Boolean       @default(false) @map("has_saved_callup")
+  team              Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  competition       Competition? @relation(fields: [competitionId], references: [id], onDelete: SetNull)
+  shirtPiece        UniformPiece? @relation("MatchShirt", fields: [shirtPieceId], references: [id], onDelete: SetNull)
+  shortsPiece       UniformPiece? @relation("MatchShorts", fields: [shortsPieceId], references: [id], onDelete: SetNull)
+  socksPiece        UniformPiece? @relation("MatchSocks", fields: [socksPieceId], references: [id], onDelete: SetNull)
+  callups           Callup[]
+
+  @@index([teamId, startsAt, id], map: "idx_matches_team_date")
+  @@map("matches")
+}
+
+model Callup {
+  matchId   String  @map("match_id") @db.Uuid
+  athleteId String  @map("athlete_id") @db.Uuid
+  match     Match   @relation(fields: [matchId], references: [id], onDelete: Cascade)
+  athlete   Athlete @relation(fields: [athleteId], references: [id], onDelete: Cascade)
+
+  @@id([matchId, athleteId])
+  @@index([athleteId])
+  @@map("callups")
 }
 
 model TeamFollow {

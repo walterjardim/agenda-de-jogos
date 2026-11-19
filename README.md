@@ -7,9 +7,9 @@ Em **Settings → Secrets and variables → Actions → Variables**, configure
 `EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` com o ID do cliente OAuth Web.
 
 Com o workflow na branch padrão, abra **Actions → Gerar APK → Run workflow**.
-Mantenha `main` no seletor **Use workflow from** e digite o nome da branch que
-quer compilar no campo **branch** (por exemplo, `feature/layout-agenda`).
-A branch escolhida precisa estar no GitHub e pode ter apenas o código do app.
+Escolha a branch na lista **Use workflow from** e deixe o campo **branch**
+em branco. Se a branch ainda não tiver a versão atual do workflow, selecione
+`main` na lista e informe a branch de destino no campo opcional.
 Ao fim da execução, baixe
 `Agenda-de-Jogos-YYYYMMDD-HHMMSS.apk` em **Artifacts**. A data e a hora
 seguem o fuso de São Paulo.

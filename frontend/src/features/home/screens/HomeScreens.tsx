@@ -1,6 +1,9 @@
 import { useRouter } from 'expo-router';
 import { type ReactNode, useRef, useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { FormField, FormInput } from '../../../shared/components/FormInput';
+import { surfaces } from '../../../shared/theme/surfaces';
+import { TeamIdentity } from '../../teams/TeamIdentity';
 import { theme } from '../../../shared/theme/theme';
 import { ApiError, type Profile } from '../../auth/api';
 import { useAuth } from '../../auth/AuthContext';
@@ -9,7 +12,9 @@ import { ChooseTeamScreen } from '../../teams/ChooseTeamScreen';
 import { usePreview } from '../PreviewContext';
 
 import { previewTeam as team, previewTimezone } from '../../matches/preview';
-import { ActionButton, HomeScreen } from '../components/HomeScreen';
+import { ActionButton } from '../../../shared/components/ActionButton';
+import { HomeScreen } from '../components/HomeScreen';
+import { TabIcon } from '../components/TabIcon';
 
 function ChoosePreviewTeam() {
   const router = useRouter();
@@ -30,17 +35,10 @@ function ChoosePreviewTeam() {
 function TeamCard({ children }: { children: ReactNode }) {
   return (
     <View style={styles.card}>
-      <View style={styles.teamRow}>
-        <View aria-hidden={true} style={styles.teamBadge}>
-          <Text style={styles.badgeText}>AJ</Text>
-        </View>
-        <View style={styles.teamInfo}>
-          <Text style={styles.cardTitle}>{team.name}</Text>
-          <Text style={styles.description}>
-            {team.modality} · {team.category}
-          </Text>
-        </View>
-      </View>
+      <TeamIdentity
+        name={team.name}
+        description={`${team.modality} · ${team.category}`}
+      />
       {children}
     </View>
   );
@@ -66,14 +64,12 @@ export function SearchTeamsScreen() {
       title="Buscar times"
       description="Encontre uma equipe pelo nome e siga para acompanhar seus jogos."
     >
-      <TextInput
+      <FormInput
         accessibilityLabel="Nome do time"
         autoCapitalize="none"
         autoCorrect={false}
         placeholder="Ex.: Ajax"
-        placeholderTextColor={theme.colors.subtle}
         returnKeyType="search"
-        style={styles.search}
         value={query}
         onChangeText={setQuery}
       />
@@ -198,16 +194,21 @@ function AccountProfile({ user }: { user: Profile }) {
       title="Perfil"
       description="Gerencie as preferências da sua conta."
     >
+      <View style={[styles.card, surfaces.highlighted, styles.account]}>
+        <View style={styles.avatar}>
+          <TabIcon name="profile" color={theme.colors.white} />
+        </View>
+        <View style={styles.accountDetails}>
+          <Text style={styles.cardTitle}>{user.name}</Text>
+          <Text style={styles.description}>{user.email}</Text>
+        </View>
+      </View>
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>{user.name}</Text>
-        <Text style={styles.description}>{user.email}</Text>
-        <Text style={styles.cardTitle}>Fuso horário</Text>
-        <TextInput
-          accessibilityLabel="Fuso horário"
+        <FormField
+          label="Fuso horário"
           autoCapitalize="none"
           autoCorrect={false}
           editable={!busy}
-          style={styles.search}
           value={timezone}
           onChangeText={setTimezone}
         />
@@ -218,6 +219,7 @@ function AccountProfile({ user }: { user: Profile }) {
             busy || !timezone.trim() || timezone.trim() === user.timezone
           }
           primary
+          fullWidth
         />
       </View>
       {Boolean(notice) && (
@@ -227,6 +229,7 @@ function AccountProfile({ user }: { user: Profile }) {
       )}
       <ActionButton
         label="Sair"
+        destructive
         onPress={() => void submit('logout')}
         disabled={busy}
       />
@@ -244,38 +247,19 @@ export function ProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  description: { color: theme.colors.muted, fontSize: 16, lineHeight: 23 },
-  search: {
-    minHeight: 52,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: 12,
-    backgroundColor: theme.colors.white,
-    color: theme.colors.text,
-    fontSize: 16,
-  },
-  card: {
-    padding: 16,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: 16,
-    backgroundColor: theme.colors.white,
-  },
-  teamRow: { flexDirection: 'row', alignItems: 'center', gap: 12 },
-  teamBadge: {
+  description: surfaces.text,
+  card: surfaces.card,
+  cardTitle: surfaces.title,
+  account: { flexDirection: 'row', alignItems: 'center' },
+  avatar: {
     width: 44,
     height: 44,
-    borderRadius: 12,
+    borderRadius: 13,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: theme.colors.primary,
+    backgroundColor: theme.colors.accent,
   },
-  badgeText: { color: theme.colors.white, fontWeight: '800' },
-  teamInfo: { flex: 1 },
-  cardTitle: { color: theme.colors.text, fontSize: 18, fontWeight: '800' },
-  following: { color: theme.colors.muted, fontSize: 16, fontWeight: '700' },
-  empty: { color: theme.colors.muted, fontSize: 16, lineHeight: 23 },
+  accountDetails: { flex: 1 },
+  following: { color: theme.colors.accent, fontSize: 15, fontWeight: '700' },
+  empty: surfaces.text,
 });

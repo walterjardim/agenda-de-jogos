@@ -54,7 +54,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     gap: 16,
   },
-  pressed: { backgroundColor: '#F0F1F3' },
+  pressed: { backgroundColor: theme.colors.accentSurface },
   label: {
     color: theme.colors.text,
     fontSize: 18,

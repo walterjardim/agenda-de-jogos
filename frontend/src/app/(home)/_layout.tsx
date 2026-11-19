@@ -13,12 +13,19 @@ export default function HomeLayout() {
       initialRouteName={hasActiveTeam ? 'agenda' : 'buscar'}
       screenOptions={{
         headerShown: false,
-        tabBarActiveTintColor: theme.colors.primary,
+        tabBarActiveTintColor: theme.colors.accent,
+        tabBarActiveBackgroundColor: theme.colors.accentSurface,
         tabBarInactiveTintColor: theme.colors.muted,
         tabBarLabelStyle: { fontWeight: '700', fontSize: 12 },
         tabBarStyle: {
           backgroundColor: theme.colors.white,
+          borderTopColor: theme.colors.surfaceBorder,
           height: 60 + bottom,
+        },
+        tabBarItemStyle: {
+          borderRadius: 12,
+          marginHorizontal: 3,
+          marginVertical: 4,
         },
       }}
     >

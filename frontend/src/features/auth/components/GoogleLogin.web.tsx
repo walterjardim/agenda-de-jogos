@@ -1,4 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
+import { ActivityIndicator } from 'react-native';
+import { theme } from '../../../shared/theme/theme';
 import { apiUrl, loginSetupMessage, webClientId } from '../config';
 import type { GoogleLoginProps } from './GoogleLogin';
 import { GoogleSignInButton } from './GoogleSignInButton';
@@ -64,6 +66,7 @@ export function GoogleLogin({
 }: GoogleLoginProps) {
   const container = useRef<HTMLDivElement>(null);
   const [failed, setFailed] = useState(false);
+  const [rendered, setRendered] = useState(false);
   const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
@@ -90,6 +93,7 @@ export function GoogleLogin({
           locale: 'pt-BR',
           width: Math.min(element.clientWidth || 250, 400),
         });
+        setRendered(true);
       })
       .catch(() => {
         if (active) {
@@ -110,15 +114,26 @@ export function GoogleLogin({
 
   return (
     <>
+      {!rendered && !failed && (
+        <ActivityIndicator
+          accessibilityLabel="Carregando login do Google"
+          color={theme.colors.accent}
+        />
+      )}
       <div
         ref={container}
         inert={disabled}
-        style={{ minHeight: failed ? 0 : 40 }}
+        style={{
+          display: 'flex',
+          justifyContent: 'center',
+          minHeight: rendered ? 40 : 0,
+        }}
       />
       {failed && (
         <GoogleSignInButton
           onPress={() => {
             setFailed(false);
+            setRendered(false);
             onError('');
             setAttempt((value) => value + 1);
           }}

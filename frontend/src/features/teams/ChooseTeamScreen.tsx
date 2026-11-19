@@ -1,10 +1,13 @@
 import { useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
-import { theme } from '../../shared/theme/theme';
+import { Text, View } from 'react-native';
+import { FormInput } from '../../shared/components/FormInput';
+import { surfaces as styles } from '../../shared/theme/surfaces';
+import { TeamIdentity } from './TeamIdentity';
 import { ApiError } from '../auth/api';
 import { useAuth } from '../auth/AuthContext';
-import { ActionButton, HomeScreen } from '../home/components/HomeScreen';
+import { ActionButton } from '../../shared/components/ActionButton';
+import { HomeScreen } from '../home/components/HomeScreen';
 import { useMatchResource } from '../matches/hooks';
 import { searchTeams } from './api';
 
@@ -67,19 +70,25 @@ export function ChooseTeamScreen({
           : 'Busque pelo nome. Sua última escolha será lembrada no próximo acesso.'
       }
     >
-      <TextInput
-        accessibilityLabel="Nome do time"
-        placeholder="Nome do time"
-        placeholderTextColor={theme.colors.muted}
-        value={input}
-        onChangeText={setInput}
-        maxLength={100}
-        editable={!busy}
-        returnKeyType="search"
-        onSubmitEditing={search}
-        style={styles.input}
-      />
-      <ActionButton label="Buscar" onPress={search} disabled={!!busy} primary />
+      <View style={styles.card}>
+        <FormInput
+          accessibilityLabel="Nome do time"
+          placeholder="Nome do time"
+          value={input}
+          onChangeText={setInput}
+          maxLength={100}
+          editable={!busy}
+          returnKeyType="search"
+          onSubmitEditing={search}
+        />
+        <ActionButton
+          label="Buscar"
+          onPress={search}
+          disabled={!!busy}
+          primary
+          fullWidth
+        />
+      </View>
       {!!error && (
         <Text accessibilityLiveRegion="polite" style={styles.text}>
           {error}
@@ -100,13 +109,11 @@ export function ChooseTeamScreen({
           )}
           {state.data.data.map((team) => (
             <View key={team.id} style={styles.card}>
-              <Text style={styles.title}>{team.name}</Text>
-              <Text style={styles.text}>
-                {team.sport} · {team.category}
-              </Text>
-              {team.id === session?.user.activeTeamId && (
-                <Text style={styles.text}>Time atual</Text>
-              )}
+              <TeamIdentity
+                name={team.name}
+                description={`${team.sport} · ${team.category}`}
+                current={team.id === session?.user.activeTeamId}
+              />
               <ActionButton
                 label={
                   busy === team.id
@@ -164,26 +171,3 @@ export function ChooseTeamScreen({
     </HomeScreen>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    padding: 16,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: 16,
-    backgroundColor: theme.colors.white,
-  },
-  title: { color: theme.colors.text, fontSize: 18, fontWeight: '800' },
-  text: { color: theme.colors.muted, fontSize: 16, lineHeight: 23 },
-  input: {
-    minHeight: 52,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: 12,
-    color: theme.colors.text,
-    fontSize: 16,
-  },
-});

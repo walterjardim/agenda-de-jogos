@@ -1,0 +1,104 @@
+name: Gerar APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Branch do repositório para compilar
+        required: true
+        default: main
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  android:
+    name: Compilar APK Android
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+    env:
+      TZ: America/Sao_Paulo
+      EXPO_PUBLIC_API_URL: ${{ vars.EXPO_PUBLIC_API_URL }}
+      EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID: ${{ vars.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID }}
+
+    steps:
+      - name: Obter script de build do workflow
+        uses: actions/checkout@v7
+        with:
+          ref: ${{ github.workflow_sha }}
+          path: apk-builder
+          sparse-checkout: gerar-apk.sh
+          sparse-checkout-cone-mode: false
+          persist-credentials: false
+
+      - name: Baixar branch do APK
+        uses: actions/checkout@v7
+        with:
+          ref: refs/heads/${{ inputs.branch }}
+          path: source
+          persist-credentials: false
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: source/frontend/package-lock.json
+
+      - name: Validar variáveis do app
+        run: |
+          node <<'NODE'
+          const apiUrl = URL.parse((process.env.EXPO_PUBLIC_API_URL ?? '').trim());
+          if (apiUrl?.protocol !== 'https:' || apiUrl.username || apiUrl.password ||
+              apiUrl.search || apiUrl.hash || !/\/api\/v1\/?$/.test(apiUrl.pathname)) {
+            console.error('::error::Configure EXPO_PUBLIC_API_URL com a URL HTTPS da API incluindo /api/v1.');
+            process.exitCode = 1;
+          }
+          const webClientId = (process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '').trim();
+          if (!/^[a-z0-9-]+\.apps\.googleusercontent\.com$/i.test(webClientId)) {
+            console.error('::error::Configure EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID com o ID do cliente OAuth Web.');
+            process.exitCode = 1;
+          }
+          NODE
+
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Preparar SDK Android
+        run: sdkmanager "platforms;android-36" "build-tools;36.0.0" "ndk;27.1.12297006"
+
+      - name: Gerar projeto Android
+        working-directory: source/frontend
+        run: |
+          if [[ ! -f android/gradlew ]]; then
+            npm ci
+            npx expo prebuild --platform android --no-install
+          fi
+
+      - name: Gerar e verificar APK
+        id: apk
+        run: |
+          build_dir="$(mktemp -d "$RUNNER_TEMP/agenda-apk.XXXXXXXX")"
+          cp --remove-destination -- apk-builder/gerar-apk.sh source/gerar-apk.sh
+          bash source/gerar-apk.sh "$build_dir/frontend"
+
+          shopt -s nullglob
+          apks=("$build_dir/frontend/android/app/build/outputs/apk/release"/*.apk)
+          if (( ${#apks[@]} != 1 )); then
+            printf '::error::Esperava um APK gerado por gerar-apk.sh, mas encontrei %s.\n' "${#apks[@]}"
+            exit 1
+          fi
+          apk="${apks[0]}"
+
+          certs="$("$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --print-certs "$apk")"
+          printf '### %s\n\n%s\n%s\n%s\n' "${apk##*/}" '```text' "$certs" '```' >> "$GITHUB_STEP_SUMMARY"
+          printf 'path=%s\n' "$apk" >> "$GITHUB_OUTPUT"
+
+      - name: Disponibilizar APK para download
+        uses: actions/upload-artifact@v7
+        with:
+          path: ${{ steps.apk.outputs.path }}
+          archive: false
+          if-no-files-found: error

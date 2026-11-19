@@ -1,6 +1,9 @@
+import { Temporal } from '@js-temporal/polyfill';
 import { Redirect, useRouter } from 'expo-router';
 import { useCallback } from 'react';
-import { Text, View } from 'react-native';
+import { StyleSheet, Text, View } from 'react-native';
+import { CalendarIcon } from '../../../shared/components/CalendarIcon';
+import { theme } from '../../../shared/theme/theme';
 import { ActionButton, HomeScreen } from '../../home/components/HomeScreen';
 import { usePreview } from '../../home/PreviewContext';
 import { fetchTeam, fetchWeek } from '../api';
@@ -10,8 +13,66 @@ import {
   styles,
 } from '../components/MatchViews';
 import { type AgendaTeam, useAgendaTeam, useMatchResource } from '../hooks';
-import { formatGameTime, gamesInWeek, weekInTimezone } from '../model';
+import {
+  formatGameTime,
+  gamesInWeek,
+  type Match,
+  weekInTimezone,
+} from '../model';
 import { previewTeam } from '../preview';
+
+const weekdays = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'];
+
+function WeekCalendar({
+  week,
+  timezone,
+  matches,
+}: {
+  week: ReturnType<typeof weekInTimezone>;
+  timezone: string;
+  matches: Match[];
+}) {
+  const start = Temporal.PlainDate.from(week.from);
+  const today = Temporal.Now.plainDateISO(timezone);
+  const matchDays = new Set(
+    matches.map(({ startsAt }) =>
+      Temporal.Instant.from(startsAt)
+        .toZonedDateTimeISO(timezone)
+        .toPlainDate()
+        .toString(),
+    ),
+  );
+
+  return (
+    <View style={agendaStyles.calendar}>
+      <View style={agendaStyles.calendarHeading}>
+        <CalendarIcon size={22} color={theme.colors.white} />
+        <Text style={agendaStyles.period}>{week.label}</Text>
+      </View>
+      <View style={agendaStyles.days}>
+        {weekdays.map((weekday, index) => {
+          const date = start.add({ days: index });
+          const hasMatch = matchDays.has(date.toString());
+          const isToday = date.equals(today);
+          return (
+            <View
+              key={weekday}
+              accessible
+              accessibilityLabel={`${weekday} ${date.day}${isToday ? ', hoje' : ''}${hasMatch ? ', dia de jogo' : ''}`}
+              style={[agendaStyles.day, isToday && agendaStyles.today]}
+            >
+              <Text style={agendaStyles.weekday}>{weekday}</Text>
+              <Text style={agendaStyles.dayNumber}>{date.day}</Text>
+              <View
+                style={[agendaStyles.dot, hasMatch && agendaStyles.matchDot]}
+              />
+            </View>
+          );
+        })}
+      </View>
+    </View>
+  );
+}
 
 function WeeklyAgenda({ id, timezone, token }: AgendaTeam) {
   const router = useRouter();
@@ -42,9 +103,11 @@ function WeeklyAgenda({ id, timezone, token }: AgendaTeam) {
           : undefined
       }
     >
-      <Text style={styles.text}>
-        {(data?.week ?? weekInTimezone(timezone)).label}
-      </Text>
+      <WeekCalendar
+        week={data?.week ?? weekInTimezone(timezone)}
+        timezone={timezone}
+        matches={data?.matches ?? []}
+      />
       <View style={styles.row}>
         {(!token || selectedTeam?.isOwner) && (
           <ActionButton
@@ -86,17 +149,19 @@ function WeeklyAgenda({ id, timezone, token }: AgendaTeam) {
         <MatchLoadError error={state.error} retry={retry} />
       )}
       {data?.matches.length === 0 && (
-        <Text accessibilityLiveRegion="polite" style={styles.text}>
-          Nenhum jogo nesta semana.
-        </Text>
+        <View style={[styles.card, agendaStyles.card]}>
+          <Text accessibilityLiveRegion="polite" style={styles.text}>
+            Nenhum jogo nesta semana.
+          </Text>
+        </View>
       )}
       {data?.matches.map((match) => (
-        <View key={match.id} style={styles.card}>
+        <View key={match.id} style={[styles.card, agendaStyles.card]}>
+          <Text style={agendaStyles.matchTime}>
+            Jogo · {formatGameTime(match.startsAt, timezone)}
+          </Text>
           <Text accessibilityRole="header" style={styles.title}>
             {selectedTeam?.name ?? 'Time'} × {match.opponent}
-          </Text>
-          <Text style={styles.label}>
-            Jogo · {formatGameTime(match.startsAt, timezone)}
           </Text>
           <Text style={styles.text}>
             Chegada · {formatGameTime(match.arrivalAt, timezone)}
@@ -118,3 +183,39 @@ export function AgendaScreen() {
   if (!team) return <Redirect href="/buscar" />;
   return <WeeklyAgenda key={`${team.id}:${team.timezone}`} {...team} />;
 }
+
+const agendaStyles = StyleSheet.create({
+  calendar: {
+    padding: 12,
+    gap: 12,
+    borderRadius: 20,
+    backgroundColor: '#9F1820',
+  },
+  calendarHeading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 4,
+  },
+  period: {
+    flex: 1,
+    color: theme.colors.white,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  days: { flexDirection: 'row', gap: 2 },
+  day: {
+    flex: 1,
+    alignItems: 'center',
+    paddingVertical: 8,
+    gap: 4,
+    borderRadius: 10,
+  },
+  today: { backgroundColor: 'rgba(255, 255, 255, 0.18)' },
+  weekday: { color: theme.colors.white, fontSize: 11 },
+  dayNumber: { color: theme.colors.white, fontSize: 16, fontWeight: '800' },
+  dot: { width: 5, height: 5, borderRadius: 3 },
+  matchDot: { backgroundColor: theme.colors.white },
+  card: { borderColor: '#E5DEE0' },
+  matchTime: { color: '#9F1820', fontSize: 14, fontWeight: '700' },
+});

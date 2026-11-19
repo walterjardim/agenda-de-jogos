@@ -6,6 +6,7 @@ import { competitionRoutes } from './competitions/routes.js';
 import type { VerifyGoogleIdentity } from './auth/google.js';
 import { authRoutes } from './auth/routes.js';
 import { teamRoutes } from './teams/routes.js';
+import { matchRoutes } from './matches/routes.js';
 import type { PrismaClient } from './generated/prisma/client.js';
 import { ApiError, registerErrors } from './http/errors.js';
 
@@ -45,6 +46,7 @@ export function buildApp(options: AppOptions) {
   app.register(teamRoutes, { ...options, prefix: '/api/v1' });
   app.register(athleteRoutes, { ...options, prefix: '/api/v1' });
   app.register(competitionRoutes, { ...options, prefix: '/api/v1' });
+  app.register(matchRoutes, { ...options, prefix: '/api/v1' });
 
   return app;
 }

@@ -1,5 +1,20 @@
 # agenda-de-jogos
 
+## Gerar um APK no GitHub Actions
+
+Em **Settings → Secrets and variables → Actions → Variables**, configure
+`EXPO_PUBLIC_API_URL` com a URL HTTPS da API incluindo `/api/v1` e
+`EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID` com o ID do cliente OAuth Web.
+
+Com o workflow na branch padrão, abra **Actions → Gerar APK → Run workflow**
+e selecione a branch que deseja compilar. Ao fim da execução, baixe
+`Agenda-de-Jogos-YYYYMMDD-HHMMSS.apk` em **Artifacts**. A data e a hora
+seguem o fuso de São Paulo.
+
+O APK usa a assinatura de teste do projeto Android gerado pelo Expo. Para o
+login Google, registre no cliente OAuth Android o pacote
+`com.agendadejogos.app` e o SHA-1 exibido no resumo da execução.
+
 ## Gerar um APK atualizado
 
 No PowerShell, execute na raiz deste repositório:

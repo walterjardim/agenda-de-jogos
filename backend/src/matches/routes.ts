@@ -5,6 +5,11 @@ import { createAuthService } from "../auth/service.js";
 import { Prisma, type PrismaClient } from "../generated/prisma/client.js";
 import { ApiError, parseBody } from "../http/errors.js";
 
+import { buildMatchMessage, messageSelect } from "./message.js";
+
+const messageQuery = z.strictObject({
+  type: z.enum(["sheet", "callup"]).default("callup"),
+});
 const teamParams = z.object({ teamId: z.uuid() });
 const matchParams = z.object({ id: z.uuid() });
 const pageLimit = z.coerce.number().int().min(1).max(50).default(50);
@@ -59,6 +64,15 @@ const matchBody = z.strictObject({
   refereeFeeCents: z.number().int().min(0).max(2147483647).nullish(),
 });
 
+const callupBody = z.strictObject({
+  athleteIds: z
+    .array(z.uuid().transform((id) => id.toLowerCase()))
+    .refine(
+      (ids) => new Set(ids).size === ids.length,
+      "Não repita atletas na convocação",
+    ),
+});
+
 const pieceFields = [
   ["shirtPieceId", "shirt"],
   ["shortsPieceId", "shorts"],
@@ -102,6 +116,27 @@ function serializeMatch({
     ...match,
     arrivalAt: new Date(match.startsAt.getTime() - 60 * 60 * 1000),
     callupsCount: _count.callups,
+  };
+}
+
+function serializeCallups(
+  match: Prisma.MatchGetPayload<{ include: typeof detailInclude }>,
+) {
+  return {
+    hasSavedCallup: match.hasSavedCallup,
+    callups: match.callups.map(
+      ({ athleteId, athlete: { status: _status, ...athlete } }) => ({
+        athleteId,
+        ...athlete,
+      }),
+    ),
+    warnings: match.callups
+      .filter(({ athlete }) => athlete.status !== "active")
+      .map(({ athleteId }) => ({ athleteId, code: "ATHLETE_UNAVAILABLE" })),
+    estimatedRefereeTotalCents:
+      match.refereeFeeCents === null
+        ? null
+        : match.refereeFeeCents * match.callups.length,
   };
 }
 
@@ -270,6 +305,18 @@ export async function matchRoutes(
     };
   });
 
+  app.get("/matches/:id/message", async (request) => {
+    const { user } = await auth.requireSession(request.headers.authorization);
+    const { id } = parseBody(matchParams, request.params);
+    const { type } = parseBody(messageQuery, request.query);
+    const match = await db.match.findUnique({
+      where: { id, team: teamAccess(user.id) },
+      select: messageSelect,
+    });
+    if (!match) throw missingMatch();
+    return buildMatchMessage(match, user.timezone, type);
+  });
+
   app.get("/matches/:id", async (request) => {
     const { user } = await auth.requireSession(request.headers.authorization);
     const { id } = parseBody(matchParams, request.params);
@@ -278,23 +325,10 @@ export async function matchRoutes(
       include: detailInclude,
     });
     if (!match) throw missingMatch();
-    const { callups, hasSavedCallup, ...record } = match;
+    const { callups: _callups, hasSavedCallup, ...record } = match;
     return {
       ...serializeMatch({ ...record, hasSavedCallup }),
-      hasSavedCallup,
-      callups: callups.map(
-        ({ athleteId, athlete: { status: _status, ...athlete } }) => ({
-          athleteId,
-          ...athlete,
-        }),
-      ),
-      warnings: callups
-        .filter(({ athlete }) => athlete.status !== "active")
-        .map(({ athleteId }) => ({ athleteId, code: "ATHLETE_UNAVAILABLE" })),
-      estimatedRefereeTotalCents:
-        match.refereeFeeCents === null
-          ? null
-          : match.refereeFeeCents * match._count.callups,
+      ...serializeCallups(match),
     };
   });
 
@@ -338,6 +372,53 @@ export async function matchRoutes(
       }
     });
   }
+
+  app.put("/matches/:id/callups", async (request) => {
+    const { user } = await auth.requireSession(request.headers.authorization);
+    const { id } = parseBody(matchParams, request.params);
+    const { athleteIds } = parseBody(callupBody, request.body);
+    const match = await mutateMatch(id, user.id, async (tx, teamId) => {
+      const locked = await tx.$queryRaw<{ id: string }[]>`
+        SELECT id FROM matches WHERE id = ${id}::uuid FOR UPDATE
+      `;
+      if (!locked.length) throw missingMatch();
+
+      if (athleteIds.length) {
+        // Protect roster references from concurrent deletion or changes until commit.
+        await tx.$queryRaw`
+          SELECT id FROM athletes
+          WHERE team_id = ${teamId}::uuid
+            AND id IN (${Prisma.join(athleteIds.map((athleteId) => Prisma.sql`${athleteId}::uuid`))})
+          ORDER BY id FOR SHARE
+        `;
+        const athletes = await tx.athlete.findMany({
+          where: { id: { in: athleteIds }, team: teamAccess(user.id) },
+          select: { id: true, teamId: true },
+        });
+        if (athletes.length !== athleteIds.length)
+          throw new ApiError(404, "NOT_FOUND", "Atleta não encontrado");
+        if (athletes.some((athlete) => athlete.teamId !== teamId))
+          throw invalidReference("athleteIds");
+      }
+
+      return tx.match.update({
+        where: { id },
+        data: {
+          hasSavedCallup: true,
+          callups: {
+            deleteMany: {},
+            create: athleteIds.map((athleteId) => ({ athleteId })),
+          },
+        },
+        include: detailInclude,
+      });
+    });
+    return {
+      matchId: match.id,
+      ...serializeCallups(match),
+      count: match.callups.length,
+    };
+  });
 
   app.patch("/matches/:id", async (request) => {
     const { user } = await auth.requireSession(request.headers.authorization);

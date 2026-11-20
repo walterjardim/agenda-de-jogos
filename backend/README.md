@@ -173,6 +173,41 @@ jogos do time. Para abrir a ficha, use `GET /api/v1/matches/:id`.
 Execute `npm run db:migrate` no ambiente do backend para habilitar as
 rotas com a tabela de jogos.
 
+### Salvamento de convocações
+
+`PUT /api/v1/matches/:id/callups` recebe `{ "athleteIds": ["<UUID>"] }`
+com a lista completa de convocados e exige sessão do criador ou de um seguidor
+da equipe. A resposta inclui `matchId`, `hasSavedCallup`, `callups` em ordem
+de camisa, `count`, `warnings` e `estimatedRefereeTotalCents`.
+
+A lista vazia é válida e salva `hasSavedCallup: true`. O detalhe do jogo
+retorna esse indicador para restaurar a seleção, inclusive vazia. Repetir a
+requisição mantém a mesma seleção. Atletas lesionados ou suspensos são aceitos
+com aviso. Taxa não informada retorna total nulo; taxa zero retorna zero.
+
+Campos desconhecidos e IDs duplicados retornam `400`. Atletas inexistentes ou
+sem acesso retornam `404`; atletas de outra equipe acessível retornam `422`.
+A substituição ocorre em transação com bloqueio da equipe, do jogo e proteção
+das referências do elenco. Uma falha preserva a convocação anterior.
+As tabelas e o indicador usam a migration existente de jogos.
+
+### Ficha e convocação para compartilhar
+
+`GET /api/v1/matches/:id/message?type=sheet` gera a ficha do jogo.
+`type=callup` gera a convocação e é o padrão quando o parâmetro é omitido.
+Criador e seguidores podem consultar. A resposta contém `type`, `text` e
+`whatsappUrl`. A convocação exige ao menos um atleta e retorna `422` quando
+vazia; a ficha pode ser gerada sem convocados.
+
+O texto usa os dados atuais do time, competição, peças e atletas, ordenados
+por número de camisa. Início e chegada são formatados em português no fuso
+atual do perfil, com chegada uma hora antes. Observações mantêm as quebras de
+linha. Taxa nula é omitida e taxa zero aparece como R$ 0,00 por atleta.
+
+Até 2.000 caracteres, o link do WhatsApp codifica o texto completo. Acima
+disso, `whatsappUrl` é nulo e `text` permanece integral para compartilhamento
+nativo ou cópia. O app exibe e copia esse mesmo texto e usa o link da API.
+
 ### Comandos
 
 ```powershell

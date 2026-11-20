@@ -31,10 +31,10 @@ import { previewMessage } from '../preview';
 
 function Message({
   text,
-  canSendLink,
+  whatsappUrl,
 }: {
   text: string;
-  canSendLink: boolean;
+  whatsappUrl: string | null;
 }) {
   const [notice, setNotice] = useState('');
 
@@ -51,10 +51,7 @@ function Message({
 
   async function send() {
     try {
-      if (canSendLink)
-        await Linking.openURL(
-          `https://wa.me/?text=${encodeURIComponent(text)}`,
-        );
+      if (whatsappUrl) await Linking.openURL(whatsappUrl);
       else await Share.share({ message: text });
     } catch {
       setNotice(
@@ -70,9 +67,17 @@ function Message({
           {text}
         </Text>
       </View>
-      {(canSendLink || Platform.OS !== 'web') && (
+      {!whatsappUrl && (
+        <Text style={styles.text}>
+          O texto ultrapassa 2.000 caracteres.{' '}
+          {Platform.OS === 'web'
+            ? 'Copie o conteúdo completo para compartilhar.'
+            : 'Use o compartilhamento do dispositivo ou copie o conteúdo completo.'}
+        </Text>
+      )}
+      {(whatsappUrl || Platform.OS !== 'web') && (
         <ActionButton
-          label={canSendLink ? 'Enviar no WhatsApp' : 'Compartilhar texto'}
+          label={whatsappUrl ? 'Enviar no WhatsApp' : 'Compartilhar texto'}
           primary
           fullWidth
           onPress={() => void send()}
@@ -108,14 +113,19 @@ function ShareMatch({
   const load = useCallback(async () => {
     const match = await loadMatch();
     if (!match) return null;
-    const message = token
-      ? await fetchMessage(id, token, type)
-      : { text: previewMessage(match, timezone, type) };
-    const { text } = message;
-    const canSendLink =
-      (!('whatsappUrl' in message) || message.whatsappUrl !== null) &&
-      Array.from(text).length <= 2000;
-    return { type, text, canSendLink };
+    if (token) {
+      const message = await fetchMessage(id, token, type);
+      return { type, text: message.text, whatsappUrl: message.whatsappUrl };
+    }
+    const text = previewMessage(match, timezone, type);
+    return {
+      type,
+      text,
+      whatsappUrl:
+        Array.from(text).length <= 2000
+          ? `https://wa.me/?text=${encodeURIComponent(text)}`
+          : null,
+    };
   }, [id, loadMatch, timezone, token, type]);
   const { state, retry } = useMatchResource(load);
   const emptyCallup =
@@ -140,6 +150,7 @@ function ShareMatch({
           <Pressable
             key={value}
             accessibilityRole="radio"
+            aria-checked={type === value}
             accessibilityState={{ checked: type === value }}
             onPress={() => setType(value)}
             style={({ pressed }) => [
@@ -180,7 +191,7 @@ function ShareMatch({
           <Message
             key={type}
             text={state.data.text}
-            canSendLink={state.data.canSendLink}
+            whatsappUrl={state.data.whatsappUrl}
           />
         )}
       <ActionButton

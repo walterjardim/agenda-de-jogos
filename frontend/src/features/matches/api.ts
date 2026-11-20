@@ -123,7 +123,7 @@ export async function fetchMessage(
   id: string,
   token: string,
   type: MessageType,
-): Promise<{ text: string; whatsappUrl: string | null }> {
+): Promise<{ type: MessageType; text: string; whatsappUrl: string | null }> {
   return request(`${matchPath(id)}/message?type=${type}`, { token });
 }
 

@@ -45,7 +45,7 @@ type Resource<T> =
 
 export function useMatchResource<T>(load: () => Promise<T>) {
   const focused = useIsFocused();
-  const { invalidateSession, session } = useAuth();
+  const { invalidateSession, refreshProfile, session } = useAuth();
   const token = session?.sessionToken;
   const [state, setState] = useState<Resource<T>>({ status: 'loading' });
   const [attempt, setAttempt] = useState(0);
@@ -64,13 +64,16 @@ export function useMatchResource<T>(load: () => Promise<T>) {
         if (token && error instanceof ApiError && error.status === 401) {
           void invalidateSession(token);
         }
-        setState({ status: 'error', error });
+        if (token && error instanceof ApiError && error.status === 404) {
+          await refreshProfile(token).catch(() => undefined);
+        }
+        if (active) setState({ status: 'error', error });
       }
     });
     return () => {
       active = false;
     };
-  }, [focused, load, token, invalidateSession, attempt]);
+  }, [focused, load, token, invalidateSession, refreshProfile, attempt]);
 
   return { state, retry: () => setAttempt((value) => value + 1) };
 }

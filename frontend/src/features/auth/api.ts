@@ -118,9 +118,10 @@ export async function revokeSession(token: string) {
 
 export async function selectTeam(token: string, id: string) {
   return profile(
-    await request(`/teams/${encodeURIComponent(id)}/select`, {
-      method: 'POST',
+    await request('/me', {
+      method: 'PATCH',
       token,
+      body: { activeTeamId: id },
     }),
   );
 }

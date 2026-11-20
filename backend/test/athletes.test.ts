@@ -154,7 +154,7 @@ test('persiste elenco, isola permissões e mantém paginação após excluir o c
   assert.equal((await create(url, 0, 'João')).statusCode, 201);
   assert.equal((await create(`${anotherTeam}/athletes`, 0)).statusCode, 201);
 
-  assert.equal((await app.inject({ method: 'POST', url: `${team}/select`, headers: other })).statusCode, 200);
+  assert.equal((await app.inject({ method: 'PUT', url: `${team}/follow`, headers: other })).statusCode, 200);
   const first = (await app.inject({ url: `${url}?limit=1`, headers: other })).json();
   const item = `/api/v1/athletes/${first.data[0].id}`;
   assert.equal(first.data[0].shirtNumber, 0);

@@ -78,6 +78,7 @@ test('persiste CRUD, isola proprietários e limpa seguidores e seleção ao excl
   const second = await app.inject({ method: 'POST', url: '/api/v1/teams', headers: ownerHeaders, payload: { ...input, name: 'Segundo time' } });
   const secondId = second.json().id;
   for (const teamId of [id, secondId, secondId]) {
+    assert.equal((await app.inject({ method: 'PUT', url: `/api/v1/teams/${teamId}/follow`, headers: otherHeaders })).statusCode, 200);
     const chosen = await app.inject({ method: 'POST', url: `/api/v1/teams/${teamId}/select`, headers: otherHeaders });
     assert.equal(chosen.statusCode, 200);
     assert.equal(chosen.json().activeTeamId, teamId);

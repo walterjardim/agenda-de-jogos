@@ -9,7 +9,7 @@ import { useAuth } from '../auth/AuthContext';
 import { ActionButton } from '../../shared/components/ActionButton';
 import { HomeScreen } from '../home/components/HomeScreen';
 import { useMatchResource } from '../matches/hooks';
-import { searchTeams } from './api';
+import { followTeam, searchTeams } from './api';
 
 export function ChooseTeamScreen({
   token,
@@ -19,7 +19,7 @@ export function ChooseTeamScreen({
   mine?: boolean;
 }) {
   const router = useRouter();
-  const { session, chooseTeam } = useAuth();
+  const { session, chooseTeam, invalidateSession } = useAuth();
   const [input, setInput] = useState('');
   const [query, setQuery] = useState('');
   const [cursor, setCursor] = useState<string>();
@@ -52,6 +52,29 @@ export function ChooseTeamScreen({
     }
   }
 
+  async function follow(id: string) {
+    if (pending.current) return;
+    pending.current = true;
+    setBusy(id);
+    setError('');
+    try {
+      await followTeam(token, id);
+      retry();
+    } catch (cause) {
+      if (cause instanceof ApiError && cause.status === 401)
+        await invalidateSession(token);
+      else
+        setError(
+          cause instanceof ApiError && cause.status === 404
+            ? 'Este time não está mais disponível. Atualize a lista.'
+            : 'Não foi possível confirmar o seguimento. Atualize a lista e tente novamente.',
+        );
+    } finally {
+      pending.current = false;
+      setBusy(undefined);
+    }
+  }
+
   function search() {
     if (busy) return;
     setQuery(input.trim());
@@ -67,7 +90,7 @@ export function ChooseTeamScreen({
       description={
         mine
           ? 'Escolha entre suas equipes e os times que você acompanha.'
-          : 'Busque pelo nome. Sua última escolha será lembrada no próximo acesso.'
+          : 'Encontre um time pelo nome e siga para acessar seus jogos.'
       }
     >
       <View style={styles.card}>
@@ -76,7 +99,7 @@ export function ChooseTeamScreen({
           placeholder="Nome do time"
           value={input}
           onChangeText={setInput}
-          maxLength={100}
+          maxLength={80}
           editable={!busy}
           returnKeyType="search"
           onSubmitEditing={search}
@@ -84,7 +107,7 @@ export function ChooseTeamScreen({
         <ActionButton
           label="Buscar"
           onPress={search}
-          disabled={!!busy}
+          disabled={!!busy || (!mine && input.trim().length < 2)}
           primary
           fullWidth
         />
@@ -104,7 +127,12 @@ export function ChooseTeamScreen({
       )}
       {state.status === 'ready' && (
         <>
-          {state.data.data.length === 0 && (
+          {!mine && query.length < 2 && (
+            <Text style={styles.text}>
+              Digite pelo menos 2 caracteres para buscar.
+            </Text>
+          )}
+          {(mine || query.length >= 2) && state.data.data.length === 0 && (
             <Text style={styles.text}>Nenhum time encontrado.</Text>
           )}
           {state.data.data.map((team) => (
@@ -114,18 +142,34 @@ export function ChooseTeamScreen({
                 description={`${team.sport} · ${team.category}`}
                 current={team.id === session?.user.activeTeamId}
               />
-              <ActionButton
-                label={
-                  busy === team.id
-                    ? 'Salvando…'
-                    : team.id === session?.user.activeTeamId
-                      ? 'Abrir agenda'
-                      : 'Escolher time'
-                }
-                primary
-                disabled={!!busy}
-                onPress={() => void choose(team.id)}
-              />
+              <Text style={styles.text}>
+                {team.isOwner
+                  ? 'Criador'
+                  : team.isFollowing
+                    ? 'Seguindo'
+                    : 'Você ainda não segue este time.'}
+              </Text>
+              {team.isOwner || team.isFollowing ? (
+                <ActionButton
+                  label={
+                    busy === team.id
+                      ? 'Salvando…'
+                      : team.id === session?.user.activeTeamId
+                        ? 'Abrir agenda'
+                        : 'Escolher time'
+                  }
+                  primary
+                  disabled={!!busy}
+                  onPress={() => void choose(team.id)}
+                />
+              ) : (
+                <ActionButton
+                  label={busy === team.id ? 'Seguindo…' : 'Seguir'}
+                  primary
+                  disabled={!!busy}
+                  onPress={() => void follow(team.id)}
+                />
+              )}
             </View>
           ))}
           {state.data.nextCursor && (

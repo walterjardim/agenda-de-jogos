@@ -1,6 +1,8 @@
 import type { ReactNode } from 'react';
-import { Pressable, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { CalendarIcon } from '../../../shared/components/CalendarIcon';
+import { surfaces } from '../../../shared/theme/surfaces';
 import { theme } from '../../../shared/theme/theme';
 import { useAuth } from '../../auth/AuthContext';
 
@@ -31,47 +33,24 @@ export function HomeScreen({
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.content}>
-          <Text style={styles.eyebrow}>
-            {session ? 'Agenda de Jogos' : 'Agenda de Jogos · Prévia'}
-          </Text>
-          <Text accessibilityRole="header" style={styles.title}>
-            {title}
-          </Text>
-          {description && <Text style={styles.description}>{description}</Text>}
+          <View style={[surfaces.card, styles.header]}>
+            <View style={styles.brand}>
+              <View style={styles.icon}>
+                <CalendarIcon size={20} color={theme.colors.white} />
+              </View>
+              <Text style={styles.eyebrow}>
+                {session ? 'Agenda de Jogos' : 'Agenda de Jogos · Prévia'}
+              </Text>
+            </View>
+            <Text accessibilityRole="header" style={styles.title}>
+              {title}
+            </Text>
+            {description && <Text style={surfaces.text}>{description}</Text>}
+          </View>
           {children}
         </View>
       </ScrollView>
     </SafeAreaView>
-  );
-}
-
-export function ActionButton({
-  label,
-  onPress,
-  primary = false,
-  disabled = false,
-}: {
-  label: string;
-  onPress: () => void;
-  primary?: boolean;
-  disabled?: boolean;
-}) {
-  return (
-    <Pressable
-      accessibilityRole="button"
-      accessibilityState={{ disabled }}
-      disabled={disabled}
-      onPress={onPress}
-      style={({ pressed }) => [
-        styles.button,
-        primary && styles.primaryButton,
-        (pressed || disabled) && styles.pressed,
-      ]}
-    >
-      <Text style={[styles.buttonLabel, primary && styles.primaryButtonLabel]}>
-        {label}
-      </Text>
-    </Pressable>
   );
 }
 
@@ -80,30 +59,31 @@ const styles = StyleSheet.create({
   scroll: { alignItems: 'center' },
   content: {
     width: '100%',
-    maxWidth: 460,
-    paddingHorizontal: 24,
-    paddingVertical: 32,
+    maxWidth: 540,
+    paddingHorizontal: 20,
+    paddingVertical: 20,
     gap: 16,
   },
-  eyebrow: { color: theme.colors.primary, fontSize: 14, fontWeight: '700' },
-  title: { color: theme.colors.text, fontSize: 30, fontWeight: '800' },
-  description: { color: theme.colors.muted, fontSize: 16, lineHeight: 23 },
-  button: {
-    alignSelf: 'flex-start',
-    minHeight: 48,
+  header: {
+    gap: 8,
+    padding: 18,
+    borderTopWidth: 3,
+    borderTopColor: theme.colors.accent,
+  },
+  brand: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  icon: {
+    width: 32,
+    height: 32,
+    alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: 18,
-    paddingVertical: 10,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    backgroundColor: theme.colors.white,
+    borderRadius: 9,
+    backgroundColor: theme.colors.accent,
   },
-  primaryButton: {
-    backgroundColor: theme.colors.primary,
-    borderColor: theme.colors.primary,
+  eyebrow: {
+    flex: 1,
+    color: theme.colors.accent,
+    fontSize: 13,
+    fontWeight: '700',
   },
-  buttonLabel: { color: theme.colors.text, fontSize: 16, fontWeight: '700' },
-  primaryButtonLabel: { color: theme.colors.white },
-  pressed: { opacity: 0.8 },
+  title: { color: theme.colors.text, fontSize: 28, fontWeight: '800' },
 });

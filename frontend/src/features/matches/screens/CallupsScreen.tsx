@@ -1,9 +1,11 @@
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { theme } from '../../../shared/theme/theme';
 import { ApiError } from '../../auth/api';
 import { useAuth } from '../../auth/AuthContext';
-import { ActionButton, HomeScreen } from '../../home/components/HomeScreen';
+import { ActionButton } from '../../../shared/components/ActionButton';
+import { HomeScreen } from '../../home/components/HomeScreen';
 import { usePreview } from '../../home/PreviewContext';
 import { fetchAthletes, saveCallups } from '../api';
 import {
@@ -108,14 +110,23 @@ function Selection({
 
   return (
     <>
-      <Text accessibilityLiveRegion="polite" style={styles.title}>
-        {count} {count === 1 ? 'convocado' : 'convocados'}
-      </Text>
+      <View style={[styles.card, styles.highlighted]}>
+        <Text accessibilityLiveRegion="polite" style={styles.title}>
+          {count} {count === 1 ? 'convocado' : 'convocados'}
+        </Text>
+        <Text style={styles.text}>
+          Total estimado ·{' '}
+          {total === null ? 'Taxa não informada' : formatFee(total)}
+        </Text>
+      </View>
       {roster.length === 0 && (
         <Text style={styles.text}>Nenhum atleta cadastrado no elenco.</Text>
       )}
       {roster.map(({ id, name, shirtNumber, position, status }) => (
-        <View style={styles.card} key={id}>
+        <View
+          style={[styles.card, selected.has(id) && styles.highlighted]}
+          key={id}
+        >
           <Pressable
             accessibilityRole="checkbox"
             accessibilityLabel={`${shirtNumber} · ${name} · ${position}`}
@@ -123,11 +134,26 @@ function Selection({
             accessibilityState={{ checked: selected.has(id), disabled: busy }}
             disabled={busy}
             onPress={() => toggle(id)}
-            style={styles.option}
+            style={({ pressed }) => [
+              rosterStyles.row,
+              (pressed || busy) && rosterStyles.dimmed,
+            ]}
           >
-            <Text style={styles.label}>
-              {selected.has(id) ? '☑' : '☐'} {shirtNumber} · {name} · {position}
-            </Text>
+            <View
+              aria-hidden
+              style={[
+                rosterStyles.checkbox,
+                selected.has(id) && rosterStyles.checked,
+              ]}
+            >
+              {selected.has(id) && <Text style={rosterStyles.check}>✓</Text>}
+            </View>
+            <View style={rosterStyles.player}>
+              <Text style={styles.label}>
+                {shirtNumber} · {name}
+              </Text>
+              <Text style={styles.text}>{position}</Text>
+            </View>
           </Pressable>
           {status !== 'active' && (
             <Text style={styles.error}>
@@ -136,10 +162,6 @@ function Selection({
           )}
         </View>
       ))}
-      <Text style={styles.label}>
-        Total estimado ·{' '}
-        {total === null ? 'Taxa não informada' : formatFee(total)}
-      </Text>
       {Boolean(error) && (
         <Text accessibilityLiveRegion="polite" style={styles.error}>
           {error}
@@ -148,11 +170,13 @@ function Selection({
       <ActionButton
         label={busy ? 'Salvando…' : 'Salvar convocação'}
         primary
+        fullWidth
         disabled={busy}
         onPress={() => void submit(false)}
       />
       <ActionButton
         label="Compartilhar convocação"
+        fullWidth
         disabled={busy || count === 0}
         onPress={() => void submit(true)}
       />
@@ -218,3 +242,24 @@ export function CallupsScreen() {
   if (!team || !id) return <Redirect href="/buscar" />;
   return <Callups key={`${id}:${team.id}`} id={id} team={team} />;
 }
+
+const rosterStyles = StyleSheet.create({
+  row: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 12 },
+  dimmed: { opacity: 0.65 },
+  player: { flex: 1 },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: 7,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    backgroundColor: theme.colors.white,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  checked: {
+    backgroundColor: theme.colors.accent,
+    borderColor: theme.colors.accent,
+  },
+  check: { color: theme.colors.white, fontWeight: '800' },
+});

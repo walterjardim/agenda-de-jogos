@@ -6,9 +6,10 @@ import {
   View,
 } from 'react-native';
 import { useState } from 'react';
-import { ActionButton } from '../../home/components/HomeScreen';
+import { ActionButton } from '../../../shared/components/ActionButton';
 import { ApiError } from '../../auth/api';
 import { theme } from '../../../shared/theme/theme';
+import { surfaces } from '../../../shared/theme/surfaces';
 
 type Option = { id: string | null; label: string };
 
@@ -37,17 +38,23 @@ export function SelectField({
         accessibilityState={{ expanded: open, disabled }}
         disabled={disabled}
         onPress={() => setOpen(!open)}
-        style={styles.input}
+        style={({ pressed }) => [
+          styles.input,
+          styles.trigger,
+          (open || pressed) && styles.selected,
+          disabled && styles.disabled,
+        ]}
       >
-        <Text style={styles.text}>
-          {selected?.label ?? 'Selecione'} {open ? '▴' : '▾'}
+        <Text style={styles.value}>{selected?.label ?? 'Selecione'}</Text>
+        <Text aria-hidden style={styles.indicator}>
+          {open ? '▴' : '▾'}
         </Text>
       </Pressable>
       {open && (
         <View
           accessibilityRole="radiogroup"
           accessibilityLabel={label}
-          style={styles.card}
+          style={[styles.card, styles.options]}
         >
           {options.map((option) => (
             <Pressable
@@ -59,9 +66,17 @@ export function SelectField({
                 onChange(option.id);
                 setOpen(false);
               }}
-              style={styles.option}
+              style={({ pressed }) => [
+                styles.option,
+                (pressed || option.id === value) && styles.selected,
+              ]}
             >
-              <Text style={styles.text}>{option.label}</Text>
+              <Text style={styles.value}>{option.label}</Text>
+              {option.id === value && (
+                <Text aria-hidden style={styles.indicator}>
+                  ✓
+                </Text>
+              )}
             </Pressable>
           ))}
         </View>
@@ -87,7 +102,7 @@ export function MatchLoadError({
   retry: () => void;
 }) {
   return (
-    <View style={styles.card}>
+    <View style={[styles.card, styles.highlighted]}>
       <Text accessibilityLiveRegion="polite" style={styles.text}>
         {error instanceof ApiError && error.status === 404
           ? 'Os dados do time ou o serviço solicitado estão indisponíveis.'
@@ -99,32 +114,23 @@ export function MatchLoadError({
 }
 
 export const styles = StyleSheet.create({
-  card: {
-    padding: 16,
-    gap: 10,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: 16,
-    backgroundColor: theme.colors.white,
+  ...surfaces,
+  trigger: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  value: { flex: 1, color: theme.colors.text, fontSize: 16 },
+  indicator: { color: theme.colors.accent, fontSize: 17, fontWeight: '800' },
+  options: { padding: 4, gap: 2, borderRadius: 12 },
+  option: {
+    minHeight: 44,
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingHorizontal: 10,
+    paddingVertical: 8,
+    gap: 8,
+    borderRadius: 9,
   },
-  row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 },
-  field: { gap: 6 },
-  title: { color: theme.colors.text, fontSize: 18, fontWeight: '800' },
-  label: { color: theme.colors.text, fontSize: 15, fontWeight: '700' },
-  text: { color: theme.colors.muted, fontSize: 16, lineHeight: 23 },
-  input: {
-    minHeight: 48,
-    justifyContent: 'center',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: 12,
-    backgroundColor: theme.colors.white,
-    color: theme.colors.text,
-    fontSize: 16,
+  selected: {
+    backgroundColor: theme.colors.accentSurface,
+    borderColor: theme.colors.accent,
   },
-  option: { minHeight: 44, justifyContent: 'center' },
-  notes: { minHeight: 96, textAlignVertical: 'top' },
-  error: { color: theme.colors.primary, fontSize: 15, fontWeight: '700' },
+  disabled: { opacity: 0.65 },
 });

@@ -1,9 +1,19 @@
 import * as Clipboard from 'expo-clipboard';
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useState } from 'react';
-import { Linking, Platform, Share, Text, View } from 'react-native';
+import {
+  Linking,
+  Platform,
+  Pressable,
+  Share,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { theme } from '../../../shared/theme/theme';
 import { ApiError } from '../../auth/api';
-import { ActionButton, HomeScreen } from '../../home/components/HomeScreen';
+import { ActionButton } from '../../../shared/components/ActionButton';
+import { HomeScreen } from '../../home/components/HomeScreen';
 import { fetchMessage } from '../api';
 import {
   LoadingMatches,
@@ -55,7 +65,7 @@ function Message({
 
   return (
     <>
-      <View style={styles.card}>
+      <View style={[styles.card, styles.highlighted]}>
         <Text selectable style={styles.text}>
           {text}
         </Text>
@@ -64,10 +74,15 @@ function Message({
         <ActionButton
           label={canSendLink ? 'Enviar no WhatsApp' : 'Compartilhar texto'}
           primary
+          fullWidth
           onPress={() => void send()}
         />
       )}
-      <ActionButton label="Copiar texto" onPress={() => void copy()} />
+      <ActionButton
+        label="Copiar texto"
+        fullWidth
+        onPress={() => void copy()}
+      />
       {Boolean(notice) && (
         <Text accessibilityLiveRegion="polite" style={styles.text}>
           {notice}
@@ -111,17 +126,38 @@ function ShareMatch({
 
   return (
     <HomeScreen title="Prévia do compartilhamento" standalone>
-      <View style={styles.row}>
-        <ActionButton
-          label="Ficha"
-          primary={type === 'sheet'}
-          onPress={() => setType('sheet')}
-        />
-        <ActionButton
-          label="Convocação"
-          primary={type === 'callup'}
-          onPress={() => setType('callup')}
-        />
+      <View
+        accessibilityRole="radiogroup"
+        accessibilityLabel="Tipo de mensagem"
+        style={shareStyles.segments}
+      >
+        {(
+          [
+            ['sheet', 'Ficha'],
+            ['callup', 'Convocação'],
+          ] as const
+        ).map(([value, label]) => (
+          <Pressable
+            key={value}
+            accessibilityRole="radio"
+            accessibilityState={{ checked: type === value }}
+            onPress={() => setType(value)}
+            style={({ pressed }) => [
+              shareStyles.option,
+              type === value && shareStyles.active,
+              pressed && shareStyles.pressed,
+            ]}
+          >
+            <Text
+              style={[
+                shareStyles.label,
+                type === value && shareStyles.activeLabel,
+              ]}
+            >
+              {label}
+            </Text>
+          </Pressable>
+        ))}
       </View>
       {state.status === 'loading' && <LoadingMatches />}
       {state.status === 'error' && !emptyCallup && (
@@ -173,3 +209,29 @@ export function ShareMatchScreen() {
     />
   );
 }
+
+const shareStyles = StyleSheet.create({
+  segments: {
+    flexDirection: 'row',
+    gap: 4,
+    padding: 4,
+    borderRadius: 14,
+    backgroundColor: theme.colors.accentSurface,
+  },
+  option: {
+    flex: 1,
+    minHeight: 44,
+    justifyContent: 'center',
+    padding: 8,
+    borderRadius: 10,
+  },
+  active: { backgroundColor: theme.colors.accent },
+  pressed: { opacity: 0.75 },
+  label: {
+    color: theme.colors.accent,
+    textAlign: 'center',
+    fontSize: 15,
+    fontWeight: '700',
+  },
+  activeLabel: { color: theme.colors.white },
+});

@@ -1,6 +1,5 @@
 import { useCallback, useRef, useState } from 'react';
 import {
-  Pressable,
   ScrollView,
   StyleSheet,
   Text,
@@ -8,7 +7,8 @@ import {
   useWindowDimensions,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { CalendarIcon } from '../../../shared/components/CalendarIcon';
+import { ActionButton } from '../../../shared/components/ActionButton';
+import { surfaces } from '../../../shared/theme/surfaces';
 import { theme } from '../../../shared/theme/theme';
 import { Brand } from '../components/Brand';
 import { GoogleLogin } from '../components/GoogleLogin';
@@ -53,26 +53,21 @@ export function LoginScreen({ onOpenPreview }: { onOpenPreview?: () => void }) {
     <SafeAreaView style={styles.safeArea}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.content}>
-          <View style={styles.brand}>
+          <View style={[surfaces.card, surfaces.highlighted, styles.hero]}>
             <Brand />
+            <View
+              style={[
+                styles.illustration,
+                { height: Math.min(230, Math.max(140, height * 0.26)) },
+              ]}
+            >
+              <LoginIllustration />
+            </View>
           </View>
-          <View
-            style={[
-              styles.illustration,
-              { height: Math.min(270, Math.max(170, height * 0.29)) },
-            ]}
-          >
-            <LoginIllustration />
-          </View>
-          <View style={styles.introduction}>
+          <View style={[surfaces.card, styles.signIn]}>
             <Text accessibilityRole="header" style={styles.heading}>
-              Seu time, organizado.
+              Entrar
             </Text>
-            <Text style={styles.description}>
-              Jogos, convocações e informações prontas para compartilhar.
-            </Text>
-          </View>
-          <View style={styles.signIn}>
             <GoogleLogin
               disabled={busy}
               onCredential={submitToken}
@@ -82,24 +77,21 @@ export function LoginScreen({ onOpenPreview }: { onOpenPreview?: () => void }) {
               Sua conta é criada no primeiro acesso.
             </Text>
             {(busy || Boolean(error)) && (
-              <Text accessibilityLiveRegion="polite" style={styles.notice}>
+              <Text
+                accessibilityLiveRegion="polite"
+                style={busy ? styles.notice : surfaces.error}
+              >
                 {busy ? 'Entrando…' : error}
               </Text>
             )}
           </View>
           {onOpenPreview && !busy && (
-            <Pressable
-              accessibilityRole="button"
+            <ActionButton
+              label="Prévia da home"
               onPress={onOpenPreview}
-              style={styles.previewButton}
-            >
-              <Text style={styles.previewLabel}>Prévia da home</Text>
-            </Pressable>
+              fullWidth
+            />
           )}
-          <View style={styles.footer}>
-            <CalendarIcon size={26} />
-            <Text style={styles.footerText}>Organize seus jogos</Text>
-          </View>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -112,28 +104,20 @@ const styles = StyleSheet.create({
   content: {
     width: '100%',
     maxWidth: 460,
-    flexGrow: 1,
+    gap: 14,
     paddingHorizontal: 24,
     paddingTop: 36,
     paddingBottom: 24,
   },
-  brand: { alignItems: 'center', marginBottom: 32 },
-  illustration: { width: '100%', marginBottom: 24 },
-  introduction: { alignItems: 'center', gap: 14 },
+  hero: { alignItems: 'center', gap: 12, padding: 18 },
+  illustration: { width: '100%' },
   heading: {
-    fontSize: 30,
+    fontSize: 24,
     fontWeight: '800',
     textAlign: 'center',
     color: theme.colors.text,
   },
-  description: {
-    fontSize: 18,
-    lineHeight: 27,
-    color: theme.colors.muted,
-    textAlign: 'center',
-    maxWidth: 360,
-  },
-  signIn: { marginTop: 38, gap: 14 },
+  signIn: { gap: 14 },
   accountNote: {
     fontSize: 14,
     lineHeight: 21,
@@ -146,25 +130,4 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     color: theme.colors.muted,
   },
-  previewButton: {
-    alignSelf: 'center',
-    justifyContent: 'center',
-    minHeight: 48,
-    marginTop: 12,
-    paddingHorizontal: 12,
-  },
-  previewLabel: {
-    color: theme.colors.primary,
-    fontSize: 16,
-    fontWeight: '700',
-  },
-  footer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 10,
-    paddingTop: 48,
-    marginTop: 'auto',
-  },
-  footerText: { color: theme.colors.subtle, fontSize: 14, flexShrink: 1 },
 });

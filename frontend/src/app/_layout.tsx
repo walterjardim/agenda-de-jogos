@@ -58,6 +58,8 @@ function Navigation() {
           <Stack.Screen name="competicoes" />
           <Stack.Screen name="atleta" />
           <Stack.Screen name="competicao" />
+          <Stack.Screen name="uniformes" />
+          <Stack.Screen name="uniforme" />
         </Stack.Protected>
       </Stack>
     </PreviewContext.Provider>

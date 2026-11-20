@@ -247,6 +247,11 @@ function WeeklyAgenda({ id, timezone, token }: AgendaTeam) {
               onPress={() => router.push('/elenco')}
             />
             <HomeMenuItem
+              icon="uniform"
+              label="Uniformes"
+              onPress={() => router.push('/uniformes')}
+            />
+            <HomeMenuItem
               icon="trophy"
               label="Competições"
               onPress={() => router.push('/competicoes')}

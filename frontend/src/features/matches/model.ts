@@ -11,6 +11,7 @@ export type PieceType = 'shirt' | 'shorts' | 'socks';
 export type UniformPiece = {
   id: string;
   pieceType: PieceType;
+  colorHex: string;
   uniformName: string;
   description: string;
   isHomeDefault: boolean;

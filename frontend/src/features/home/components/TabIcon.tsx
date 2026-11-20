@@ -13,6 +13,7 @@ const icons = {
   swap: 'M4 8h16m-4-4 4 4-4 4M20 16H4m4-4-4 4 4 4',
   trophy:
     'M8 3h8v6a4 4 0 0 1-8 0V3Zm0 2H4v2a4 4 0 0 0 4 4m8-6h4v2a4 4 0 0 1-4 4m-4 2v7m-4 0h8',
+  uniform: 'm8 3-5 3 3 5 2-1v11h8V10l2 1 3-5-5-3a4 4 0 0 1-8 0Z',
   chevron: 'm10 6 6 6-6 6',
 };
 

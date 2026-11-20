@@ -4,6 +4,7 @@ import type {
   Competition,
   MatchDetail,
   MatchInput,
+  UniformPiece,
 } from '../matches/model';
 
 type Preview = {
@@ -13,6 +14,9 @@ type Preview = {
   setFollowingAjax: (following: boolean) => void;
   selectedPreviewTeam: boolean;
   choosePreviewTeam: () => void;
+  previewUniforms: UniformPiece[];
+  savePreviewUniform: (input: Omit<UniformPiece, 'id'>, id?: string) => void;
+  deletePreviewUniform: (id: string) => void;
   previewMatches: MatchDetail[];
   previewAthletes: Athlete[];
   previewCompetitions: Competition[];

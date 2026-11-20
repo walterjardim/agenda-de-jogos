@@ -30,6 +30,7 @@ export const previewCatalog: Catalog = {
       id: 'camisa-casa',
       pieceType: 'shirt',
       uniformName: 'Casa',
+      colorHex: '#1E40AF',
       description: 'Azul',
       isHomeDefault: true,
       isAwayDefault: false,
@@ -38,6 +39,7 @@ export const previewCatalog: Catalog = {
       id: 'calcao-fora',
       pieceType: 'shorts',
       uniformName: 'Fora',
+      colorHex: '#FFFFFF',
       description: 'Branco',
       isHomeDefault: false,
       isAwayDefault: true,
@@ -46,6 +48,7 @@ export const previewCatalog: Catalog = {
       id: 'meiao-casa',
       pieceType: 'socks',
       uniformName: 'Casa',
+      colorHex: '#1E40AF',
       description: 'Azul',
       isHomeDefault: true,
       isAwayDefault: false,
@@ -82,9 +85,8 @@ export function previewMatch(
   id: string,
   savedCallups?: Callup[],
   competitions = previewCatalog.competitions,
+  uniforms = previewCatalog.uniforms,
 ): MatchDetail {
-  const { uniforms } = previewCatalog;
-
   function resolvePiece(
     type: PieceType,
     selectedId: string | null | undefined,

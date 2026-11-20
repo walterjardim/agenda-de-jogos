@@ -4,6 +4,7 @@ import type {
   Competition,
   MatchDetail,
   MatchInput,
+  UniformPiece,
 } from '../matches/model';
 import {
   previewAthletes,
@@ -14,6 +15,7 @@ import type { RecordInput, RecordKind } from '../teams/api';
 
 function initialData() {
   return {
+    uniforms: previewCatalog.uniforms,
     athletes: previewAthletes,
     competitions: previewCatalog.competitions,
     matches: [] as MatchDetail[],
@@ -30,7 +32,13 @@ export function usePreviewTeamData() {
       ...current,
       matches: [
         ...current.matches,
-        previewMatch(input, id, undefined, current.competitions),
+        previewMatch(
+          input,
+          id,
+          undefined,
+          current.competitions,
+          current.uniforms,
+        ),
       ],
     }));
   }
@@ -123,7 +131,55 @@ export function usePreviewTeamData() {
     });
   }
 
+  function savePreviewUniform(input: Omit<UniformPiece, 'id'>, id?: string) {
+    const piece = { ...input, id: id ?? `preview-${nextId.current++}` };
+    setData((current) => {
+      const uniforms = current.uniforms.map((item) => {
+        if (item.id === id) return piece;
+        if (item.pieceType !== piece.pieceType) return item;
+        return {
+          ...item,
+          isHomeDefault: input.isHomeDefault ? false : item.isHomeDefault,
+          isAwayDefault: input.isAwayDefault ? false : item.isAwayDefault,
+        };
+      });
+      if (!id) uniforms.push(piece);
+      return {
+        ...current,
+        uniforms,
+        matches: current.matches.map((match) => ({
+          ...match,
+          shirtPiece: match.shirtPiece?.id === id ? piece : match.shirtPiece,
+          shortsPiece: match.shortsPiece?.id === id ? piece : match.shortsPiece,
+          socksPiece: match.socksPiece?.id === id ? piece : match.socksPiece,
+        })),
+      };
+    });
+  }
+
+  function deletePreviewUniform(id: string) {
+    setData((current) => ({
+      ...current,
+      uniforms: current.uniforms.filter((piece) => piece.id !== id),
+      matches: current.matches.map((match) => ({
+        ...match,
+        ...(match.shirtPiece?.id === id
+          ? { shirtPieceId: null, shirtPiece: null }
+          : {}),
+        ...(match.shortsPiece?.id === id
+          ? { shortsPieceId: null, shortsPiece: null }
+          : {}),
+        ...(match.socksPiece?.id === id
+          ? { socksPieceId: null, socksPiece: null }
+          : {}),
+      })),
+    }));
+  }
+
   return {
+    previewUniforms: data.uniforms,
+    savePreviewUniform,
+    deletePreviewUniform,
     previewMatches: data.matches,
     previewAthletes: data.athletes,
     previewCompetitions: data.competitions,

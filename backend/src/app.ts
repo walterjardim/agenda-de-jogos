@@ -1,3 +1,4 @@
+import { uniformRoutes } from './uniforms/routes.js';
 import cors from '@fastify/cors';
 import rateLimit from '@fastify/rate-limit';
 import Fastify, { LogController } from 'fastify';
@@ -46,6 +47,7 @@ export function buildApp(options: AppOptions) {
   app.register(teamRoutes, { ...options, prefix: '/api/v1' });
   app.register(athleteRoutes, { ...options, prefix: '/api/v1' });
   app.register(competitionRoutes, { ...options, prefix: '/api/v1' });
+  app.register(uniformRoutes, { ...options, prefix: '/api/v1' });
   app.register(matchRoutes, { ...options, prefix: '/api/v1' });
 
   return app;

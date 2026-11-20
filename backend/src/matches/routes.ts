@@ -39,15 +39,6 @@ const listQuery = z
     path: ["to"],
     message: "A data final deve ser igual ou posterior à inicial",
   });
-const uniformsQuery = z.strictObject({
-  limit: pageLimit,
-  cursor: z
-    .string()
-    .max(64)
-    .transform((value) => Buffer.from(value, "base64url").toString("utf8"))
-    .pipe(z.uuid())
-    .optional(),
-});
 const optionalText = (max: number) =>
   z
     .string()
@@ -275,33 +266,6 @@ export async function matchRoutes(
           ? Buffer.from(JSON.stringify([last.startsAt, last.id])).toString(
               "base64url",
             )
-          : null,
-    };
-  });
-
-  app.get("/teams/:teamId/uniforms", async (request) => {
-    const { user } = await auth.requireSession(request.headers.authorization);
-    const { teamId } = parseBody(teamParams, request.params);
-    const { limit, cursor } = parseBody(uniformsQuery, request.query);
-    const team = await db.team.findUnique({
-      where: { id: teamId, ...teamAccess(user.id) },
-      select: {
-        uniformPieces: {
-          where: cursor ? { id: { gt: cursor } } : undefined,
-          select: pieceSelect,
-          orderBy: { id: "asc" },
-          take: limit + 1,
-        },
-      },
-    });
-    if (!team) throw missingTeam();
-    const data = team.uniformPieces.slice(0, limit);
-    const last = data.at(-1);
-    return {
-      data,
-      nextCursor:
-        last && team.uniformPieces.length > limit
-          ? Buffer.from(last.id).toString("base64url")
           : null,
     };
   });

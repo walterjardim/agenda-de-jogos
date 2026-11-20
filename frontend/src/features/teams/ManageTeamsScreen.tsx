@@ -1,10 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'expo-router';
-import { StyleSheet, Text, TextInput, View } from 'react-native';
-import { theme } from '../../shared/theme/theme';
+import { Text, View } from 'react-native';
+import { FormField } from '../../shared/components/FormInput';
+import { surfaces as styles } from '../../shared/theme/surfaces';
+import { TeamIdentity } from './TeamIdentity';
 import { ApiError } from '../auth/api';
 import { useAuth } from '../auth/AuthContext';
-import { ActionButton, HomeScreen } from '../home/components/HomeScreen';
+import { ActionButton } from '../../shared/components/ActionButton';
+import { HomeScreen } from '../home/components/HomeScreen';
 import {
   deleteTeam,
   listOwnedTeams,
@@ -137,19 +140,16 @@ export function ManageTeamsScreen({ token }: { token: string }) {
             {editingId ? 'Editar time' : 'Novo time'}
           </Text>
           {fields.map(({ key, label, limit }) => (
-            <View key={key} style={styles.field}>
-              <Text style={styles.text}>{label}</Text>
-              <TextInput
-                accessibilityLabel={label}
-                value={form[key]}
-                maxLength={limit}
-                editable={!busy}
-                style={styles.input}
-                onChangeText={(value) =>
-                  setForm((current) => current && { ...current, [key]: value })
-                }
-              />
-            </View>
+            <FormField
+              key={key}
+              label={label}
+              value={form[key]}
+              maxLength={limit}
+              editable={!busy}
+              onChangeText={(value) =>
+                setForm((current) => current && { ...current, [key]: value })
+              }
+            />
           ))}
           <ActionButton
             label={busy ? 'Salvando…' : 'Salvar time'}
@@ -182,10 +182,10 @@ export function ManageTeamsScreen({ token }: { token: string }) {
       ) : (
         teams.map((team) => (
           <View key={team.id} style={styles.card}>
-            <Text style={styles.title}>{team.name}</Text>
-            <Text style={styles.text}>
-              {team.sport} · {team.category}
-            </Text>
+            <TeamIdentity
+              name={team.name}
+              description={`${team.sport} · ${team.category}`}
+            />
             {confirmDelete === team.id ? (
               <>
                 <Text style={styles.text}>
@@ -194,6 +194,7 @@ export function ManageTeamsScreen({ token }: { token: string }) {
                 </Text>
                 <ActionButton
                   label="Confirmar exclusão"
+                  destructive
                   disabled={busy}
                   onPress={() => void submit(team.id)}
                 />
@@ -212,6 +213,7 @@ export function ManageTeamsScreen({ token }: { token: string }) {
                 />
                 <ActionButton
                   label="Excluir"
+                  destructive
                   disabled={busy || !!form}
                   onPress={() => setConfirmDelete(team.id)}
                 />
@@ -231,27 +233,3 @@ export function ManageTeamsScreen({ token }: { token: string }) {
     </HomeScreen>
   );
 }
-
-const styles = StyleSheet.create({
-  card: {
-    padding: 16,
-    gap: 12,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: 16,
-    backgroundColor: theme.colors.white,
-  },
-  field: { gap: 6 },
-  title: { color: theme.colors.text, fontSize: 18, fontWeight: '800' },
-  text: { color: theme.colors.muted, fontSize: 16, lineHeight: 23 },
-  input: {
-    minHeight: 52,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
-    borderRadius: 12,
-    color: theme.colors.text,
-    fontSize: 16,
-  },
-});

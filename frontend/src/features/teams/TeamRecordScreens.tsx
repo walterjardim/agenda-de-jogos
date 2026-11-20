@@ -1,9 +1,11 @@
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { Text, TextInput, type TextInputProps, View } from 'react-native';
+import { Text, View } from 'react-native';
+import { FormField } from '../../shared/components/FormInput';
 import { ApiError } from '../auth/api';
 import { useAuth } from '../auth/AuthContext';
-import { ActionButton, HomeScreen } from '../home/components/HomeScreen';
+import { ActionButton } from '../../shared/components/ActionButton';
+import { HomeScreen } from '../home/components/HomeScreen';
 import { usePreview } from '../home/PreviewContext';
 import { fetchAthletes, fetchCompetitions, fetchTeam } from '../matches/api';
 import {
@@ -147,15 +149,6 @@ function Records({ kind, team }: { kind: RecordKind; team: AgendaTeam }) {
   );
 }
 
-function Field({ label, ...props }: TextInputProps & { label: string }) {
-  return (
-    <View style={styles.field}>
-      <Text style={styles.label}>{label}</Text>
-      <TextInput accessibilityLabel={label} {...props} style={styles.input} />
-    </View>
-  );
-}
-
 function Editor({
   kind,
   team,
@@ -212,7 +205,8 @@ function Editor({
           return;
         }
         if (
-          !team.token && records.some(
+          !team.token &&
+          records.some(
             (item) =>
               'shirtNumber' in item &&
               item.id !== record?.id &&
@@ -257,10 +251,7 @@ function Editor({
         await invalidateSession(team.token);
       } else if (failure instanceof ApiError && failure.status === 403) {
         setError('Somente o criador do time pode alterar esse cadastro.');
-      } else if (
-        failure instanceof ApiError &&
-        failure.status === 404
-      ) {
+      } else if (failure instanceof ApiError && failure.status === 404) {
         setError(
           record
             ? kind === 'athletes'
@@ -289,45 +280,47 @@ function Editor({
 
   return (
     <>
-      <Field
-        label="Nome"
-        value={name}
-        maxLength={kind === 'athletes' ? 80 : 120}
-        onChangeText={setName}
-        editable={!busy && !confirming}
-      />
-      {kind === 'athletes' && (
-        <>
-          <Field
-            label="Posição"
-            value={position}
-            onChangeText={setPosition}
-            editable={!busy && !confirming}
-          />
-          <Field
-            label="Número da camisa"
-            value={shirt}
-            maxLength={3}
-            onChangeText={setShirt}
-            keyboardType="number-pad"
-            editable={!busy && !confirming}
-          />
-          <SelectField
-            label="Status"
-            value={status}
-            options={statusOptions}
-            onChange={(value) => setStatus(value as Athlete['status'])}
-            disabled={busy || confirming}
-          />
-        </>
-      )}
+      <View style={styles.card}>
+        <FormField
+          label="Nome"
+          value={name}
+          maxLength={kind === 'athletes' ? 80 : 120}
+          onChangeText={setName}
+          editable={!busy && !confirming}
+        />
+        {kind === 'athletes' && (
+          <>
+            <FormField
+              label="Posição"
+              value={position}
+              onChangeText={setPosition}
+              editable={!busy && !confirming}
+            />
+            <FormField
+              label="Número da camisa"
+              value={shirt}
+              maxLength={3}
+              onChangeText={setShirt}
+              keyboardType="number-pad"
+              editable={!busy && !confirming}
+            />
+            <SelectField
+              label="Status"
+              value={status}
+              options={statusOptions}
+              onChange={(value) => setStatus(value as Athlete['status'])}
+              disabled={busy || confirming}
+            />
+          </>
+        )}
+      </View>
       {Boolean(error) && (
         <Text accessibilityLiveRegion="polite" style={styles.error}>
           {error}
         </Text>
       )}
       {confirming ? (
-        <View style={styles.card}>
+        <View style={[styles.card, styles.highlighted]}>
           <Text style={styles.label}>
             {kind === 'athletes'
               ? team.token
@@ -361,6 +354,7 @@ function Editor({
           {record && (
             <ActionButton
               label={screen.remove}
+              destructive
               disabled={busy}
               onPress={() => {
                 setConfirming(true);

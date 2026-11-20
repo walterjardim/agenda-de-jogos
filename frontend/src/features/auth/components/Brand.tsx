@@ -23,9 +23,9 @@ export function Brand() {
 const styles = StyleSheet.create({
   container: { flexDirection: 'row', alignItems: 'center', gap: 14 },
   icon: {
-    backgroundColor: theme.colors.primary,
-    width: 78,
-    height: 78,
+    backgroundColor: theme.colors.accent,
+    width: 68,
+    height: 68,
     borderRadius: 20,
     alignItems: 'center',
     justifyContent: 'center',
@@ -36,5 +36,5 @@ const styles = StyleSheet.create({
     color: theme.colors.text,
     lineHeight: 34,
   },
-  accent: { color: theme.colors.primary },
+  accent: { color: theme.colors.accent },
 });

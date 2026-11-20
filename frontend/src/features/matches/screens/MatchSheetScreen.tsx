@@ -3,7 +3,8 @@ import { useCallback, useRef, useState } from 'react';
 import { Text, View } from 'react-native';
 import { ApiError } from '../../auth/api';
 import { useAuth } from '../../auth/AuthContext';
-import { ActionButton, HomeScreen } from '../../home/components/HomeScreen';
+import { ActionButton } from '../../../shared/components/ActionButton';
+import { HomeScreen } from '../../home/components/HomeScreen';
 import { usePreview } from '../../home/PreviewContext';
 import { deleteMatch, fetchTeam } from '../api';
 import {
@@ -84,27 +85,25 @@ function MatchSheet({ id, team }: { id: string; team: AgendaTeam }) {
       )}
       {match && (
         <>
-          <ActionButton
-            label="Editar jogo"
-            disabled={confirming}
-            onPress={() =>
-              router.push({ pathname: '/editar-jogo/[id]', params: { id } })
-            }
-          />
-          <View style={styles.card}>
+          <View style={[styles.card, styles.highlighted]}>
             <Text style={styles.text}>
               {match.competition ? `${match.competition.name} · ` : ''}
               {match.isHome ? 'Casa' : 'Fora'}
             </Text>
-            <Text style={styles.label}>
+            <Text style={styles.title}>
               Jogo · {formatGameTime(match.startsAt, timezone)}
             </Text>
-            <Text style={styles.text}>
+            <Text style={styles.label}>
               Chegada · {formatGameTime(match.arrivalAt, timezone)}
             </Text>
             {Boolean(match.location) && (
               <Text style={styles.text}>Local · {match.location}</Text>
             )}
+          </View>
+          <View style={styles.card}>
+            <Text accessibilityRole="header" style={styles.title}>
+              Informações do jogo
+            </Text>
             {match.shirtPiece && (
               <Text style={styles.text}>
                 Camisa · {pieceLabel(match.shirtPiece)}
@@ -133,6 +132,7 @@ function MatchSheet({ id, team }: { id: string; team: AgendaTeam }) {
           <ActionButton
             label="Compartilhar ficha no WhatsApp"
             primary
+            fullWidth
             disabled={confirming}
             onPress={() =>
               router.push({
@@ -143,13 +143,21 @@ function MatchSheet({ id, team }: { id: string; team: AgendaTeam }) {
           />
           <ActionButton
             label="Selecionar atletas"
+            fullWidth
             disabled={confirming}
             onPress={() =>
               router.push({ pathname: '/convocacao/[id]', params: { id } })
             }
           />
+          <ActionButton
+            label="Editar jogo"
+            disabled={confirming}
+            onPress={() =>
+              router.push({ pathname: '/editar-jogo/[id]', params: { id } })
+            }
+          />
           {confirming ? (
-            <View style={styles.card}>
+            <View style={[styles.card, styles.highlighted]}>
               <Text style={styles.label}>
                 Excluir este jogo e sua convocação?
               </Text>
@@ -179,6 +187,7 @@ function MatchSheet({ id, team }: { id: string; team: AgendaTeam }) {
           ) : (
             <ActionButton
               label="Excluir jogo"
+              destructive
               onPress={() => setConfirming(true)}
             />
           )}

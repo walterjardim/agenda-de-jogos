@@ -5,7 +5,8 @@ import { AppState, StyleSheet, Text, View } from 'react-native';
 import { CalendarIcon } from '../../../shared/components/CalendarIcon';
 import { theme } from '../../../shared/theme/theme';
 import { HomeMenu, HomeMenuItem } from '../../home/components/HomeMenu';
-import { ActionButton, HomeScreen } from '../../home/components/HomeScreen';
+import { ActionButton } from '../../../shared/components/ActionButton';
+import { HomeScreen } from '../../home/components/HomeScreen';
 import { usePreview } from '../../home/PreviewContext';
 import { fetchTeam, fetchWeek } from '../api';
 import {

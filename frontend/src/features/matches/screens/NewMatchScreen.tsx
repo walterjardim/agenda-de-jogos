@@ -1,9 +1,11 @@
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { Text, TextInput, type TextInputProps, View } from 'react-native';
+import { Text, View } from 'react-native';
+import { FormField } from '../../../shared/components/FormInput';
 import { ApiError } from '../../auth/api';
 import { useAuth } from '../../auth/AuthContext';
-import { ActionButton, HomeScreen } from '../../home/components/HomeScreen';
+import { ActionButton } from '../../../shared/components/ActionButton';
+import { HomeScreen } from '../../home/components/HomeScreen';
 import { usePreview } from '../../home/PreviewContext';
 import { createMatch, fetchCatalog, updateMatch } from '../api';
 import {
@@ -49,19 +51,6 @@ type Draft = Pick<
   fee: string;
   notes: string;
 };
-
-function Field({ label, ...props }: TextInputProps & { label: string }) {
-  return (
-    <View style={styles.field}>
-      <Text style={styles.label}>{label}</Text>
-      <TextInput
-        accessibilityLabel={label}
-        {...props}
-        style={[styles.input, props.multiline && styles.notes]}
-      />
-    </View>
-  );
-}
 
 function initialDraft(timezone: string, match?: MatchDetail): Draft {
   const [date, time] = match
@@ -230,120 +219,140 @@ function MatchForm({
 
   return (
     <>
-      <Field
-        label="Adversário"
-        value={draft.opponent}
-        onChangeText={(v) => update('opponent', v)}
-        maxLength={120}
-        editable={!busy}
-      />
-      <Field
-        label="Data do jogo"
-        placeholder="DD/MM/AAAA"
-        value={draft.date}
-        maxLength={10}
-        editable={!busy}
-        onChangeText={(v) => update('date', v)}
-      />
-      <Field
-        label="Hora do jogo"
-        placeholder="HH:MM"
-        value={draft.time}
-        maxLength={5}
-        editable={!busy}
-        onChangeText={(v) => update('time', v)}
-      />
-      <Text style={styles.text}>
-        {startsAt
-          ? `Chegada automática · ${formatGameTime(arrivalFor(startsAt), team.timezone)}`
-          : 'Chegada automática · 1 hora antes do jogo'}
-      </Text>
-      <Field
-        label="Local"
-        value={draft.location}
-        onChangeText={(v) => update('location', v)}
-        maxLength={200}
-        editable={!busy}
-      />
-      <SelectField
-        label="Competição"
-        value={draft.competitionId}
-        disabled={busy}
-        options={[
-          { id: null, label: 'Sem competição' },
-          ...catalog.competitions.map(({ id, name }) => ({ id, label: name })),
-        ]}
-        onChange={(v) => update('competitionId', v)}
-      />
-      <SelectField
-        label="Mando de jogo"
-        value={draft.isHome ? 'home' : 'away'}
-        disabled={busy}
-        options={[
-          { id: 'home', label: 'Casa' },
-          { id: 'away', label: 'Fora' },
-        ]}
-        onChange={(v) => update('isHome', v === 'home')}
-      />
-      {match && (
-        <ActionButton
-          label="Aplicar padrões de uniforme"
-          disabled={busy}
-          onPress={() =>
-            setDraft((current) => ({
-              ...current,
-              shirtPieceId:
-                defaultPiece(catalog.uniforms, 'shirt', current.isHome)?.id ??
-                null,
-              shortsPieceId:
-                defaultPiece(catalog.uniforms, 'shorts', current.isHome)?.id ??
-                null,
-              socksPieceId:
-                defaultPiece(catalog.uniforms, 'socks', current.isHome)?.id ??
-                null,
-            }))
-          }
+      <View style={styles.card}>
+        <Text accessibilityRole="header" style={styles.title}>
+          Dados da partida
+        </Text>
+        <FormField
+          label="Adversário"
+          value={draft.opponent}
+          onChangeText={(v) => update('opponent', v)}
+          maxLength={120}
+          editable={!busy}
         />
-      )}
-      {pieces.map(({ key, type, label }) => {
-        const chosen = draft[key];
-        const value =
-          chosen === undefined
-            ? (defaultPiece(catalog.uniforms, type, draft.isHome)?.id ?? null)
-            : chosen;
-        return (
-          <SelectField
-            key={key}
-            label={label}
-            value={value}
+        <FormField
+          label="Data do jogo"
+          placeholder="DD/MM/AAAA"
+          value={draft.date}
+          maxLength={10}
+          editable={!busy}
+          onChangeText={(v) => update('date', v)}
+        />
+        <FormField
+          label="Hora do jogo"
+          placeholder="HH:MM"
+          value={draft.time}
+          maxLength={5}
+          editable={!busy}
+          onChangeText={(v) => update('time', v)}
+        />
+        <View style={[styles.card, styles.highlighted]}>
+          <Text style={styles.label}>
+            {startsAt
+              ? `Chegada automática · ${formatGameTime(arrivalFor(startsAt), team.timezone)}`
+              : 'Chegada automática · 1 hora antes do jogo'}
+          </Text>
+        </View>
+        <FormField
+          label="Local"
+          value={draft.location}
+          onChangeText={(v) => update('location', v)}
+          maxLength={200}
+          editable={!busy}
+        />
+        <SelectField
+          label="Competição"
+          value={draft.competitionId}
+          disabled={busy}
+          options={[
+            { id: null, label: 'Sem competição' },
+            ...catalog.competitions.map(({ id, name }) => ({
+              id,
+              label: name,
+            })),
+          ]}
+          onChange={(v) => update('competitionId', v)}
+        />
+        <SelectField
+          label="Mando de jogo"
+          value={draft.isHome ? 'home' : 'away'}
+          disabled={busy}
+          options={[
+            { id: 'home', label: 'Casa' },
+            { id: 'away', label: 'Fora' },
+          ]}
+          onChange={(v) => update('isHome', v === 'home')}
+        />
+      </View>
+      <View style={styles.card}>
+        <Text accessibilityRole="header" style={styles.title}>
+          Uniforme
+        </Text>
+        {match && (
+          <ActionButton
+            label="Aplicar padrões de uniforme"
             disabled={busy}
-            options={[
-              { id: null, label: 'Sem seleção' },
-              ...catalog.uniforms
-                .filter((piece) => piece.pieceType === type)
-                .map((piece) => ({ id: piece.id, label: pieceLabel(piece) })),
-            ]}
-            onChange={(v) => update(key, v)}
+            onPress={() =>
+              setDraft((current) => ({
+                ...current,
+                shirtPieceId:
+                  defaultPiece(catalog.uniforms, 'shirt', current.isHome)?.id ??
+                  null,
+                shortsPieceId:
+                  defaultPiece(catalog.uniforms, 'shorts', current.isHome)
+                    ?.id ?? null,
+                socksPieceId:
+                  defaultPiece(catalog.uniforms, 'socks', current.isHome)?.id ??
+                  null,
+              }))
+            }
           />
-        );
-      })}
-      <Field
-        label="Taxa por atleta (R$)"
-        placeholder="Ex.: 15,00"
-        keyboardType="decimal-pad"
-        value={draft.fee}
-        maxLength={15}
-        editable={!busy}
-        onChangeText={(v) => update('fee', v)}
-      />
-      <Field
-        label="Observações"
-        value={draft.notes}
-        maxLength={2000}
-        multiline
-        editable={!busy}
-        onChangeText={(v) => update('notes', v)}
-      />
+        )}
+        {pieces.map(({ key, type, label }) => {
+          const chosen = draft[key];
+          const value =
+            chosen === undefined
+              ? (defaultPiece(catalog.uniforms, type, draft.isHome)?.id ?? null)
+              : chosen;
+          return (
+            <SelectField
+              key={key}
+              label={label}
+              value={value}
+              disabled={busy}
+              options={[
+                { id: null, label: 'Sem seleção' },
+                ...catalog.uniforms
+                  .filter((piece) => piece.pieceType === type)
+                  .map((piece) => ({ id: piece.id, label: pieceLabel(piece) })),
+              ]}
+              onChange={(v) => update(key, v)}
+            />
+          );
+        })}
+      </View>
+      <View style={styles.card}>
+        <Text accessibilityRole="header" style={styles.title}>
+          Taxa e observações
+        </Text>
+        <FormField
+          label="Taxa por atleta (R$)"
+          placeholder="Ex.: 15,00"
+          keyboardType="decimal-pad"
+          value={draft.fee}
+          maxLength={15}
+          editable={!busy}
+          onChangeText={(v) => update('fee', v)}
+        />
+        <FormField
+          label="Observações"
+          value={draft.notes}
+          maxLength={2000}
+          multiline
+          editable={!busy}
+          onChangeText={(v) => update('notes', v)}
+        />
+      </View>
       {Boolean(error) && (
         <Text accessibilityLiveRegion="polite" style={styles.error}>
           {error}

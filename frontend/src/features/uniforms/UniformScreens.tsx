@@ -2,6 +2,8 @@ import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { ActionButton } from '../../shared/components/ActionButton';
+import { TableActions } from '../../shared/components/TableActions';
+import { tableStyles } from '../../shared/theme/table';
 import { FormField } from '../../shared/components/FormInput';
 import { theme } from '../../shared/theme/theme';
 import { ApiError } from '../auth/api';
@@ -51,7 +53,13 @@ function useUniforms(team: AgendaTeam) {
   return useMatchResource(load);
 }
 
-function PieceCard({ piece }: { piece: UniformPiece }) {
+function PieceCard({
+  piece,
+  compact = false,
+}: {
+  piece: UniformPiece;
+  compact?: boolean;
+}) {
   return (
     <View style={local.piece}>
       <View
@@ -59,10 +67,12 @@ function PieceCard({ piece }: { piece: UniformPiece }) {
         style={[local.swatch, { backgroundColor: piece.colorHex }]}
       />
       <View style={local.details}>
-        <Text style={styles.title}>
+        <Text style={compact ? styles.label : styles.title}>
           {labels[piece.pieceType]} · {piece.uniformName}
         </Text>
-        <Text style={styles.text}>{piece.description}</Text>
+        <Text style={compact ? tableStyles.position : styles.text}>
+          {piece.description}
+        </Text>
         {(piece.isHomeDefault || piece.isAwayDefault) && (
           <Text style={local.defaultText}>
             {piece.isHomeDefault && piece.isAwayDefault
@@ -80,18 +90,56 @@ function PieceCard({ piece }: { piece: UniformPiece }) {
 function UniformList({ team }: { team: AgendaTeam }) {
   const router = useRouter();
   const [filter, setFilter] = useState<string | null>(null);
+  const [removing, setRemoving] = useState<UniformPiece | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const pending = useRef(false);
+  const { deletePreviewUniform } = usePreview();
+  const { invalidateSession } = useAuth();
   const { state, retry } = useUniforms(team);
   const data = state.status === 'ready' ? state.data : null;
   const pieces = data?.uniforms.filter(
     (piece) => !filter || piece.pieceType === filter,
   );
+  async function remove() {
+    if (!removing || pending.current) return;
+    pending.current = true;
+    setBusy(true);
+    setError('');
+    try {
+      if (team.token) await deleteUniform(team.token, removing.id);
+      else deletePreviewUniform(removing.id);
+      setRemoving(null);
+      retry();
+    } catch (failure) {
+      if (team.token && failure instanceof ApiError && failure.status === 401)
+        await invalidateSession(team.token);
+      else
+        setError(
+          failure instanceof ApiError && failure.status === 403
+            ? 'Somente o criador do time pode remover uniformes.'
+            : failure instanceof ApiError && failure.status === 404
+              ? 'Peça indisponível. Atualize a lista.'
+              : 'Não foi possível confirmar a remoção. Confira a conexão e atualize a lista antes de tentar novamente.',
+        );
+    } finally {
+      pending.current = false;
+      setBusy(false);
+    }
+  }
+
   return (
     <HomeScreen title="Uniformes" description={data?.team.name} standalone>
       <SelectField
         label="Peças"
         options={[{ id: null, label: 'Todas as peças' }, ...types]}
         value={filter}
-        onChange={setFilter}
+        onChange={(value) => {
+          setFilter(value);
+          setRemoving(null);
+          setError('');
+        }}
+        disabled={busy}
       />
       {state.status === 'loading' && <LoadingMatches />}
       {state.status === 'error' && (
@@ -100,25 +148,104 @@ function UniformList({ team }: { team: AgendaTeam }) {
       {pieces?.length === 0 && (
         <Text style={styles.text}>Nenhuma peça cadastrada.</Text>
       )}
-      {pieces?.map((piece) => (
-        <View key={piece.id} style={styles.card}>
-          <PieceCard piece={piece} />
-          {data?.team.isOwner === true && (
-            <ActionButton
-              icon="edit"
-              label={`Editar ${labels[piece.pieceType].toLowerCase()} ${piece.uniformName}`}
-              onPress={() =>
-                router.push({ pathname: '/uniforme', params: { id: piece.id } })
-              }
-            />
-          )}
+      {pieces && pieces.length > 0 && (
+        <View
+          role="table"
+          accessibilityLabel="Uniformes do time"
+          style={tableStyles.table}
+        >
+          <View role="row" style={[tableStyles.row, tableStyles.header]}>
+            <Text
+              role="columnheader"
+              style={[tableStyles.heading, tableStyles.player]}
+            >
+              Peça
+            </Text>
+            {data?.team.isOwner === true && (
+              <Text
+                role="columnheader"
+                style={[tableStyles.heading, tableStyles.actions]}
+              >
+                Ações
+              </Text>
+            )}
+          </View>
+          {pieces.map((piece) => (
+            <View key={piece.id} role="rowgroup" style={tableStyles.record}>
+              <View role="row" style={tableStyles.row}>
+                <View role="cell" style={tableStyles.player}>
+                  <PieceCard piece={piece} compact />
+                </View>
+                {data?.team.isOwner === true && (
+                  <TableActions
+                    itemName={`${labels[piece.pieceType].toLowerCase()} ${piece.uniformName}`}
+                    disabled={busy}
+                    onEdit={() =>
+                      router.push({
+                        pathname: '/uniforme',
+                        params: { id: piece.id },
+                      })
+                    }
+                    onRemove={() => {
+                      setRemoving(piece);
+                      setError('');
+                    }}
+                  />
+                )}
+              </View>
+              {removing?.id === piece.id && (
+                <View style={tableStyles.confirmation}>
+                  <Text style={styles.label}>
+                    Remover {labels[piece.pieceType].toLowerCase()}{' '}
+                    {piece.uniformName}? Os jogos que a utilizam ficarão sem
+                    essa peça.
+                  </Text>
+                  {!!error && (
+                    <View style={styles.field}>
+                      <Text
+                        accessibilityLiveRegion="polite"
+                        style={styles.error}
+                      >
+                        {error}
+                      </Text>
+                      <ActionButton
+                        icon="refresh"
+                        label="Atualizar lista"
+                        disabled={busy}
+                        onPress={retry}
+                      />
+                    </View>
+                  )}
+                  <View style={styles.row}>
+                    <ActionButton
+                      icon="remove"
+                      label={busy ? 'Removendo…' : 'Confirmar remoção'}
+                      destructive
+                      disabled={busy}
+                      onPress={() => void remove()}
+                    />
+                    <ActionButton
+                      icon="cancel"
+                      label="Cancelar"
+                      disabled={busy}
+                      onPress={() => {
+                        setRemoving(null);
+                        setError('');
+                      }}
+                    />
+                  </View>
+                </View>
+              )}
+            </View>
+          ))}
         </View>
-      ))}
+      )}
       <View style={styles.row}>
         {data?.team.isOwner === true && (
           <ActionButton
             icon="add"
             label="Nova peça"
+            disabled={busy}
             primary
             onPress={() => router.push('/uniforme')}
           />
@@ -126,6 +253,7 @@ function UniformList({ team }: { team: AgendaTeam }) {
         <ActionButton
           icon="back"
           label="Voltar à agenda"
+          disabled={busy}
           onPress={() => router.dismissTo('/agenda')}
         />
       </View>
@@ -255,7 +383,7 @@ function UniformForm({
           onChangeText={(value) => change('uniformName', value)}
         />
         <FormField
-          label="Descrição da peça"
+          label="Nome da Cor"
           value={input.description}
           maxLength={80}
           editable={!disabled}

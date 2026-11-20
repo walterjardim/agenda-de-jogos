@@ -93,7 +93,7 @@ export function buildMatchMessage(
     `📅 *Data: ${messageTime(startsAt, timezone)}*`,
     `⏰ Chegada dos atletas: ${arrivalTime}`,
   );
-  if (match.location) lines.push(`📍 ${match.location}`);
+  if (match.location) lines.push(`📍 Local: ${match.location}`);
   for (const [label, piece] of [
     ["Camisa", match.shirtPiece],
     ["Calção", match.shortsPiece],

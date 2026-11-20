@@ -79,7 +79,7 @@ test("mensagem segue o texto do MVP e codifica o conteúdo completo", () => {
       "🏆 Competição: Copa Municipal 2026",
       "📅 *Data: Seg, 12/10/2026 às 09:00*",
       "⏰ Chegada dos atletas: 08:00",
-      "📍 Campo Municipal",
+      "📍 Local: Campo Municipal",
       "🔵 Camisa: Azul",
       "⚪ Calção: Branco",
       "🔵 Meião: Azul",

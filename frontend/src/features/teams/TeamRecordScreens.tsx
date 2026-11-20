@@ -1,8 +1,8 @@
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
-import { theme } from '../../shared/theme/theme';
-import { TabIcon } from '../home/components/TabIcon';
+import { Text, View } from 'react-native';
+import { TableActions } from '../../shared/components/TableActions';
+import { tableStyles as rosterStyles } from '../../shared/theme/table';
 import { FormField } from '../../shared/components/FormInput';
 import { ApiError } from '../auth/api';
 import { useAuth } from '../auth/AuthContext';
@@ -191,47 +191,20 @@ function RosterTable({
               </Text>
             </View>
             {isOwner && (
-              <View role="cell" style={rosterStyles.actions}>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Editar ${athlete.name}`}
-                  accessibilityState={{ disabled: busy }}
-                  disabled={busy}
-                  onPress={() =>
-                    router.push({
-                      pathname: '/atleta',
-                      params: { id: athlete.id },
-                    })
-                  }
-                  style={({ pressed }) => [
-                    rosterStyles.action,
-                    pressed && rosterStyles.dimmed,
-                    busy && rosterStyles.dimmed,
-                  ]}
-                >
-                  <TabIcon name="edit" color={theme.colors.accent} />
-                  <Text style={rosterStyles.actionLabel}>Editar</Text>
-                </Pressable>
-                <Pressable
-                  accessibilityRole="button"
-                  accessibilityLabel={`Remover ${athlete.name}`}
-                  accessibilityState={{ disabled: busy }}
-                  disabled={busy}
-                  onPress={() => {
-                    setRemoving(athlete);
-                    setError('');
-                  }}
-                  style={({ pressed }) => [
-                    rosterStyles.action,
-                    rosterStyles.remove,
-                    pressed && rosterStyles.dimmed,
-                    busy && rosterStyles.dimmed,
-                  ]}
-                >
-                  <TabIcon name="remove" color={theme.colors.accent} />
-                  <Text style={rosterStyles.actionLabel}>Remover</Text>
-                </Pressable>
-              </View>
+              <TableActions
+                itemName={athlete.name}
+                disabled={busy}
+                onEdit={() =>
+                  router.push({
+                    pathname: '/atleta',
+                    params: { id: athlete.id },
+                  })
+                }
+                onRemove={() => {
+                  setRemoving(athlete);
+                  setError('');
+                }}
+              />
             )}
           </View>
           {removing?.id === athlete.id && (
@@ -669,50 +642,3 @@ export function AthleteScreen() {
 export function CompetitionScreen() {
   return <TeamRecordsRoute kind="competitions" edit />;
 }
-
-const rosterStyles = StyleSheet.create({
-  table: {
-    borderWidth: 1,
-    borderColor: theme.colors.surfaceBorder,
-    borderRadius: 18,
-    overflow: 'hidden',
-    backgroundColor: theme.colors.white,
-  },
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 12,
-  },
-  header: { backgroundColor: theme.colors.accentSurface },
-  heading: { color: theme.colors.accent, fontSize: 13, fontWeight: '700' },
-  record: { borderTopWidth: 1, borderTopColor: theme.colors.surfaceBorder },
-  number: { width: 34, textAlign: 'center' },
-  player: { flex: 1, minWidth: 0 },
-  details: { gap: 4 },
-  position: { color: theme.colors.muted, fontSize: 14, lineHeight: 20 },
-  status: { color: theme.colors.muted, fontSize: 12, fontWeight: '600' },
-  unavailable: { color: theme.colors.accent },
-  actions: { width: 96, flexDirection: 'row', gap: 4 },
-  action: {
-    width: 46,
-    minHeight: 56,
-    gap: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 6,
-    borderWidth: 1,
-    borderRadius: 12,
-    borderColor: theme.colors.surfaceBorder,
-    backgroundColor: theme.colors.white,
-  },
-  actionLabel: { color: theme.colors.accent, fontSize: 11, fontWeight: '700' },
-  remove: { backgroundColor: theme.colors.accentSurface },
-  dimmed: { opacity: 0.55 },
-  confirmation: {
-    padding: 12,
-    gap: 12,
-    backgroundColor: theme.colors.accentSurface,
-  },
-});

@@ -85,6 +85,13 @@ export function localDate(timezone: string) {
   return formatDate(Temporal.Now.plainDateISO(timezone));
 }
 
+export function formatTimeInput(value: string) {
+  const digits = value.replace(/\D/g, '').slice(0, 4);
+  return digits.length > 2
+    ? `${digits.slice(0, 2)}:${digits.slice(2)}`
+    : digits;
+}
+
 export function parseStart(date: string, time: string, timezone: string) {
   const parts = /^(\d{2})\/(\d{2})\/(\d{4})$/.exec(date);
   const clock = /^(\d{2}):(\d{2})$/.exec(time);

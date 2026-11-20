@@ -25,6 +25,7 @@ import {
   type Catalog,
   defaultPiece,
   formatGameTime,
+  formatTimeInput,
   localDate,
   type MatchDetail,
   type MatchInput,
@@ -243,9 +244,10 @@ function MatchForm({
           label="Hora do jogo"
           placeholder="HH:MM"
           value={draft.time}
-          maxLength={5}
+          keyboardType="number-pad"
+          autoCorrect={false}
           editable={!busy}
-          onChangeText={(v) => update('time', v)}
+          onChangeText={(value) => update('time', formatTimeInput(value))}
         />
         <View style={[styles.card, styles.highlighted]}>
           <Text style={styles.label}>

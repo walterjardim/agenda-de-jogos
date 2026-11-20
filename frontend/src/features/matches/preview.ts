@@ -144,7 +144,7 @@ export function previewMessage(
   lines.push(
     `⏰ Chegada dos atletas: ${formatGameTime(match.arrivalAt, timezone, false)}`,
   );
-  if (match.location) lines.push(`📍 ${match.location}`);
+  if (match.location) lines.push(`📍 Local: ${match.location}`);
 
   for (const [label, piece] of [
     ['Camisa', match.shirtPiece],

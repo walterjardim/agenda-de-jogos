@@ -1,17 +1,12 @@
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import {
-  Pressable,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import { ActionButton } from '../../shared/components/ActionButton';
+import { FormField } from '../../shared/components/FormInput';
 import { theme } from '../../shared/theme/theme';
 import { ApiError } from '../auth/api';
 import { useAuth } from '../auth/AuthContext';
-import { ActionButton, HomeScreen } from '../home/components/HomeScreen';
+import { HomeScreen } from '../home/components/HomeScreen';
 import { usePreview } from '../home/PreviewContext';
 import { fetchTeam, fetchUniforms } from '../matches/api';
 import {
@@ -234,95 +229,101 @@ function UniformForm({
           }}
         />
       </View>
-      <SelectField
-        label="Tipo de peça"
-        options={types}
-        value={input.pieceType}
-        disabled={disabled || !!piece}
-        onChange={(value) => change('pieceType', value as PieceType)}
-      />
-      {piece && (
-        <Text style={styles.text}>O tipo da peça é definido no cadastro.</Text>
-      )}
-      {(['uniformName', 'description', 'colorHex'] as const).map((key) => (
-        <View key={key} style={styles.field}>
-          <Text style={styles.label}>
-            {key === 'uniformName'
-              ? 'Identificação do uniforme'
-              : key === 'description'
-                ? 'Descrição da peça'
-                : 'Cor hexadecimal'}
+      <View style={styles.card}>
+        <SelectField
+          label="Tipo de peça"
+          options={types}
+          value={input.pieceType}
+          disabled={disabled || !!piece}
+          onChange={(value) => change('pieceType', value as PieceType)}
+        />
+        {piece && (
+          <Text style={styles.text}>
+            O tipo da peça é definido no cadastro.
           </Text>
-          <TextInput
-            accessibilityLabel={
-              key === 'uniformName'
-                ? 'Identificação do uniforme'
-                : key === 'description'
-                  ? 'Descrição da peça'
-                  : 'Cor hexadecimal'
-            }
-            style={styles.input}
-            editable={!disabled}
-            value={input[key]}
-            maxLength={key === 'colorHex' ? 7 : 80}
-            autoCapitalize={key === 'colorHex' ? 'characters' : 'sentences'}
-            autoCorrect={key !== 'colorHex'}
-            onChangeText={(value) => change(key, value)}
-          />
+        )}
+        <FormField
+          label="Identificação do uniforme"
+          value={input.uniformName}
+          maxLength={80}
+          editable={!disabled}
+          onChangeText={(value) => change('uniformName', value)}
+        />
+        <FormField
+          label="Descrição da peça"
+          value={input.description}
+          maxLength={80}
+          editable={!disabled}
+          onChangeText={(value) => change('description', value)}
+        />
+        <FormField
+          label="Cor hexadecimal"
+          value={input.colorHex}
+          maxLength={7}
+          editable={!disabled}
+          autoCapitalize="characters"
+          autoCorrect={false}
+          onChangeText={(value) => change('colorHex', value)}
+        />
+        <View
+          accessibilityRole="radiogroup"
+          accessibilityLabel="Cores sugeridas"
+          style={local.colors}
+        >
+          {palette.map((color) => (
+            <Pressable
+              key={color}
+              accessibilityRole="radio"
+              accessibilityLabel={`Cor ${color}`}
+              aria-checked={input.colorHex.toUpperCase() === color}
+              accessibilityState={{
+                checked: input.colorHex.toUpperCase() === color,
+                disabled,
+              }}
+              disabled={disabled}
+              onPress={() => change('colorHex', color)}
+              style={[
+                local.swatch,
+                { backgroundColor: color },
+                input.colorHex.toUpperCase() === color && local.selected,
+              ]}
+            />
+          ))}
         </View>
-      ))}
-      <View
-        accessibilityRole="radiogroup"
-        accessibilityLabel="Cores sugeridas"
-        style={local.colors}
-      >
-        {palette.map((color) => (
-          <Pressable
-            key={color}
-            accessibilityRole="radio"
-            accessibilityLabel={`Cor ${color}`}
-            aria-checked={input.colorHex.toUpperCase() === color}
-            accessibilityState={{
-              checked: input.colorHex.toUpperCase() === color,
-              disabled,
-            }}
-            disabled={disabled}
-            onPress={() => change('colorHex', color)}
-            style={[
-              local.swatch,
-              { backgroundColor: color },
-              input.colorHex.toUpperCase() === color && local.selected,
-            ]}
-          />
-        ))}
       </View>
-      {(['isHomeDefault', 'isAwayDefault'] as const).map((flag) => (
-        <View style={local.toggle} key={flag}>
-          <Text style={styles.label}>
-            {flag === 'isHomeDefault' ? 'Padrão para casa' : 'Padrão para fora'}
-          </Text>
-          <Switch
-            accessibilityLabel={
-              flag === 'isHomeDefault' ? 'Padrão para casa' : 'Padrão para fora'
-            }
-            disabled={disabled}
-            value={input[flag]}
-            onValueChange={(value) => change(flag, value)}
-            trackColor={{ true: theme.colors.accent }}
-          />
-        </View>
-      ))}
-      <Text style={styles.text}>
-        Ao salvar como padrão, a peça substitui o padrão anterior do mesmo tipo.
-        Jogos já salvos mantêm suas escolhas.
-      </Text>
+      <View style={styles.card}>
+        {(['isHomeDefault', 'isAwayDefault'] as const).map((flag) => (
+          <View style={local.toggle} key={flag}>
+            <Text style={styles.label}>
+              {flag === 'isHomeDefault'
+                ? 'Padrão para casa'
+                : 'Padrão para fora'}
+            </Text>
+            <Switch
+              accessibilityLabel={
+                flag === 'isHomeDefault'
+                  ? 'Padrão para casa'
+                  : 'Padrão para fora'
+              }
+              disabled={disabled}
+              value={input[flag]}
+              onValueChange={(value) => change(flag, value)}
+              trackColor={{ true: theme.colors.accent }}
+            />
+          </View>
+        ))}
+        <Text style={styles.text}>
+          Ao salvar como padrão, a peça substitui o padrão anterior do mesmo
+          tipo. Jogos já salvos mantêm suas escolhas.
+        </Text>
+      </View>
       {!!error && (
         <Text accessibilityLiveRegion="polite" style={styles.error}>
           {error}
         </Text>
       )}
       {confirming ? (
-        <View style={styles.card}>
+        <View style={[styles.card, styles.highlighted]}>
           <Text style={styles.label}>
             Excluir esta peça? Os jogos que a utilizam ficarão sem essa peça.
           </Text>
@@ -335,11 +336,14 @@ function UniformForm({
           <ActionButton
             label="Cancelar exclusão"
             disabled={busy}
-            onPress={() => setConfirming(false)}
+            onPress={() => {
+              setConfirming(false);
+              setError('');
+            }}
           />
         </View>
       ) : (
-        <>
+        <View style={styles.row}>
           <ActionButton
             label={busy ? 'Salvando…' : 'Salvar peça'}
             primary
@@ -349,11 +353,15 @@ function UniformForm({
           {piece && (
             <ActionButton
               label="Excluir peça"
+              destructive
               disabled={busy}
-              onPress={() => setConfirming(true)}
+              onPress={() => {
+                setConfirming(true);
+                setError('');
+              }}
             />
           )}
-        </>
+        </View>
       )}
       <ActionButton
         label="Voltar à lista"
@@ -434,5 +442,6 @@ const local = StyleSheet.create({
     justifyContent: 'space-between',
     alignItems: 'center',
     gap: 12,
+    flexWrap: 'wrap',
   },
 });

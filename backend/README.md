@@ -81,39 +81,46 @@ de equipe inexistente ou de outro usuário retornam `404`. A exclusão remove
 seguidores e limpa o time ativo por meio das relações já existentes no banco.
 Não é necessária uma nova migration para esta funcionalidade.
 
-Após o login, a aba **Meus times** oferece cadastro, edição e exclusão com
-confirmação, além de atualização da lista e tratamento de falhas de conexão.
-A aba **Buscar** consulta as equipes cadastradas. **Escolher time** salva a
-preferência e passa a acompanhar a equipe quando ela pertence a outro usuário.
-Na home, **Trocar time** lista equipes próprias e acompanhadas, sem duplicá-las.
+Após o login, **Meus times** reúne equipes próprias e seguidas, sem duplicados.
+A edição e exclusão são oferecidas ao criador. A lista mostra o vínculo,
+a quantidade de atletas e permite escolher o time ativo ou deixar de seguir.
 
-### Busca e seleção persistente
+### Busca, seguimento e seleção persistente
 
 | Método e rota | Resultado |
 | --- | --- |
-| `GET /api/v1/teams?q=ajax&limit=20&cursor=<uuid>&mine=true` | `{ data, nextCursor }` com equipes e `isOwner` |
-| `GET /api/v1/teams/:id` | Dados da equipe, sem dados pessoais do proprietário |
-| `POST /api/v1/teams/:id/select` | Perfil com `activeTeamId` atualizado |
+| `GET /api/v1/teams` | Lista paginada de times próprios e seguidos com `isOwner`, `isFollowing`, `athletesCount` e `nextMatchAt` |
+| `GET /api/v1/teams/search?q=ajax` | Busca por nome, com metadados de descoberta e os vínculos do usuário |
+| `PUT /api/v1/teams/:id/follow` | Segue o time e retorna `{ teamId, isFollowing: true }` |
+| `DELETE /api/v1/teams/:id/follow` | Deixa de seguir, com resposta `204` |
+| `GET /api/v1/teams/:id` | Dados da equipe para criador ou seguidor |
+| `PATCH /api/v1/me` | Salva `activeTeamId` de um time próprio ou seguido |
+| `POST /api/v1/teams/:id/select` | Compatibilidade com a seleção anterior, também exige vínculo atual |
 
-Todas as rotas exigem sessão. Na busca, `q` é opcional, tem até 100 caracteres
-e procura um trecho literal do nome sem diferenciar maiúsculas de minúsculas.
-`mine=true` limita aos times próprios ou acompanhados; o padrão é buscar todos.
-`limit` varia de 1 a 50 (padrão 20). A paginação usa UUID crescente, e o cursor
-pode continuar sendo usado se a equipe anterior for excluída.
+Todas as rotas exigem sessão. Seguir e deixar de seguir são idempotentes,
+sem corpo de requisição; o usuário vem da sessão. Time inexistente retorna
+`404`. Seguir concede acesso imediato e preserva a escolha atual da agenda.
+Deixar de seguir remove somente o próprio vínculo. A transação bloqueia a
+mesma linha da equipe usada nas mutações de jogos, convocações e seleção.
 
-A seleção verifica a existência da equipe e grava o vínculo de acompanhamento
-e `users.active_team_id` numa única transação. Repetir a escolha não duplica o
-vínculo. Ela não concede permissões de administração. Uma equipe inexistente
-retorna `404`, preservando a escolha anterior.
+Para seguidores, deixar de seguir revoga o acesso e limpa `activeTeamId`
+apenas se apontar para esse time. Jogos e outros cadastros são preservados.
+O criador pode seguir e deixar de seguir o próprio time, mantendo acesso e
+seleção pela propriedade. A exclusão de equipe continua limpando a seleção
+pela chave estrangeira.
 
-O último time escolhido permanece ativo mesmo com várias equipes acompanhadas.
-`GET /me` e novos logins retornam essa preferência; o app abre a agenda desse
-time. Sem uma escolha (ou se o time foi excluído), abre a busca. Não há seleção
-automática por ordem alfabética nem por data de cadastro.
+A busca recebe `q` com 2 a 80 caracteres, ordena por nome e ID e aceita
+`limit` de 1 a 50 e cursor opaco. Retorna somente `id`, `name`, `sport`,
+`category`, `isOwner` e `isFollowing`. A listagem `/teams` mantém filtro
+opcional `q`, `limit` de 1 a 50 (padrão 20) e cursor UUID crescente.
+O parâmetro explícito `mine=false` mantém a descoberta da versão anterior;
+`mine=true` é o padrão. `/me/teams` mantém a lista antiga de equipes próprias.
 
-A home carrega o time separadamente dos jogos para manter sua identificação e
-a opção de troca disponíveis se a API de jogos falhar. As rotas de jogos ainda
-não estão implementadas neste backend.
+O app oferece **Seguir** na busca e **Escolher time** após criar o vínculo
+ou para uma equipe própria. **Meus times** confirma a ação de deixar de
+seguir. A seleção é salva por `PATCH /me`, preservada no login e restaurada
+na inicialização. Ao detectar `404` por perda de acesso, o app atualiza o
+perfil e volta à escolha quando o time ativo tiver sido limpo.
 
 ### Gestão do elenco
 

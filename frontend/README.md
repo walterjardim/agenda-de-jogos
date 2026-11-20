@@ -148,9 +148,14 @@ Ao restaurar a sessão, o app consulta `GET /me`. O perfil salva o fuso em
 `PATCH /me`, e **Sair** revoga a sessão em `POST /auth/logout`.
 
 O app abre **Buscar times** quando a conta ainda não tem time selecionado e
-**Agenda da semana** quando o perfil já tem um time. A busca, a escolha de
-times, a listagem e o cadastro de jogos da conta dependem dos respectivos endpoints.
-O Ajax de exemplo aparece na prévia de desenvolvimento.
+**Agenda da semana** quando o perfil já tem um time. A busca exige pelo menos
+dois caracteres e oferece **Seguir** antes da escolha do time. Seguir mantém
+a seleção atual. **Meus times** reúne equipes próprias e seguidas, com
+edição e exclusão reservadas ao criador e confirmação para deixar de seguir.
+A escolha é salva por `PATCH /me`. Deixar de seguir o time ativo limpa a
+seleção quando o acesso dependia desse vínculo. Ao detectar perda de acesso,
+o app consulta novamente o perfil. O Ajax de exemplo aparece na prévia de
+desenvolvimento.
 
 ## Referências
 

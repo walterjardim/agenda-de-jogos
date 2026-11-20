@@ -16,6 +16,7 @@ test('busca autenticada, paginação e seleção atômica sem expor dados do don
   const profile = () => ({ id: userId, name: 'Usuário', email: 'user@example.com', timezone: 'America/Sao_Paulo', activeTeamId });
   const tx = {
     $queryRaw: async (_strings: TemplateStringsArray, id: string) => teams.filter((team) => team.id === id).map((team) => ({ id: team.id, user_id: team.userId })),
+    team: { findFirst: async ({ where }: any) => teams.find((team) => team.id === where.id && (team.userId === userId || followed.has(team.id))) ?? null },
     teamFollow: { upsert: async ({ create }: any) => { assert.ok(inTransaction); assert.equal(create.userId, userId); followed.add(create.teamId); } },
     user: { update: async ({ where, data }: any) => { assert.ok(inTransaction); assert.equal(where.id, userId); activeTeamId = data.activeTeamId; return profile(); } },
   };
@@ -23,7 +24,7 @@ test('busca autenticada, paginação e seleção atômica sem expor dados do don
     authSession: { findUnique: async () => sessionValid ? { id: randomUUID(), user: profile() } : null },
     team: {
       findMany: async (query: any) => { lastQuery = query; return teams.filter((team) => !query.where.id || team.id > query.where.id.gt).slice(0, query.take); },
-      findUnique: async ({ where }: any) => teams.find((team) => team.id === where.id) ?? null,
+      findUnique: async ({ where }: any) => teams.find((team) => team.id === where.id && (team.userId === userId || followed.has(team.id))) ?? null,
     },
     $transaction: async (callback: (client: typeof tx) => Promise<unknown>) => {
       inTransaction = true;
@@ -51,9 +52,12 @@ test('busca autenticada, paginação e seleção atômica sem expor dados do don
   assert.deepEqual(next.json().data.map((team: { id: string }) => team.id), [ids[2]]);
   assert.equal(next.json().nextCursor, null);
   const detail = await app.inject({ method: 'GET', url: `/api/v1/teams/${ids[0]}`, headers });
-  assert.equal(detail.statusCode, 200);
+  assert.equal(detail.statusCode, 404);
   assert.equal(detail.json().userId, undefined);
+  assert.equal((await app.inject({ method: 'POST', url: `/api/v1/teams/${ids[0]}/select`, headers })).statusCode, 404);
+  assert.equal(activeTeamId, null);
   for (const id of [ids[0], ids[1], ids[1]]) {
+    assert.equal((await app.inject({ method: 'PUT', url: `/api/v1/teams/${id}/follow`, headers })).statusCode, 200);
     const result = await app.inject({ method: 'POST', url: `/api/v1/teams/${id}/select`, headers });
     assert.equal(result.statusCode, 200);
     assert.equal(result.json().activeTeamId, id);

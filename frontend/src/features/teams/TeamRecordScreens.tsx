@@ -1,6 +1,8 @@
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { Text, View } from 'react-native';
+import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { theme } from '../../shared/theme/theme';
+import { TabIcon } from '../home/components/TabIcon';
 import { FormField } from '../../shared/components/FormInput';
 import { ApiError } from '../auth/api';
 import { useAuth } from '../auth/AuthContext';
@@ -91,6 +93,191 @@ function useTeamRecords(kind: RecordKind, { id, token }: AgendaTeam) {
   return useMatchResource(load);
 }
 
+function RosterTable({
+  athletes,
+  team,
+  isOwner,
+  onRemoved,
+}: {
+  athletes: Athlete[];
+  team: AgendaTeam;
+  isOwner: boolean;
+  onRemoved: () => void;
+}) {
+  const router = useRouter();
+  const { deletePreviewRecord } = usePreview();
+  const { invalidateSession } = useAuth();
+  const [removing, setRemoving] = useState<Athlete | null>(null);
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
+  const pending = useRef(false);
+
+  async function remove() {
+    if (!removing || pending.current) return;
+    pending.current = true;
+    setBusy(true);
+    setError('');
+    try {
+      if (team.token)
+        await deleteTeamRecord('athletes', removing.id, team.token);
+      else deletePreviewRecord('athletes', removing.id);
+      setRemoving(null);
+      onRemoved();
+    } catch (failure) {
+      if (team.token && failure instanceof ApiError && failure.status === 401) {
+        await invalidateSession(team.token);
+      } else {
+        setError(
+          failure instanceof ApiError && failure.status === 403
+            ? 'Somente o criador do time pode remover atletas.'
+            : failure instanceof ApiError && failure.status === 404
+              ? 'Atleta indisponível. Atualize a lista.'
+              : 'Não foi possível confirmar a remoção. Confira a conexão e atualize a lista antes de tentar novamente.',
+        );
+      }
+    } finally {
+      pending.current = false;
+      setBusy(false);
+    }
+  }
+
+  return (
+    <View
+      role="table"
+      accessibilityLabel="Elenco do time"
+      style={rosterStyles.table}
+    >
+      <View role="row" style={[rosterStyles.row, rosterStyles.header]}>
+        <Text
+          role="columnheader"
+          style={[rosterStyles.heading, rosterStyles.number]}
+        >
+          Nº
+        </Text>
+        <Text
+          role="columnheader"
+          style={[rosterStyles.heading, rosterStyles.player]}
+        >
+          Atleta
+        </Text>
+        {isOwner && (
+          <Text
+            role="columnheader"
+            style={[rosterStyles.heading, rosterStyles.actions]}
+          >
+            Ações
+          </Text>
+        )}
+      </View>
+      {athletes.map((athlete) => (
+        <View key={athlete.id} role="rowgroup" style={rosterStyles.record}>
+          <View role="row" style={rosterStyles.row}>
+            <Text role="cell" style={[styles.label, rosterStyles.number]}>
+              {athlete.shirtNumber}
+            </Text>
+            <View
+              role="cell"
+              style={[rosterStyles.player, rosterStyles.details]}
+            >
+              <Text style={styles.label}>{athlete.name}</Text>
+              <Text style={rosterStyles.position}>{athlete.position}</Text>
+              <Text
+                style={[
+                  rosterStyles.status,
+                  athlete.status !== 'active' && rosterStyles.unavailable,
+                ]}
+              >
+                {statuses[athlete.status]}
+              </Text>
+            </View>
+            {isOwner && (
+              <View role="cell" style={rosterStyles.actions}>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Editar ${athlete.name}`}
+                  accessibilityState={{ disabled: busy }}
+                  disabled={busy}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/atleta',
+                      params: { id: athlete.id },
+                    })
+                  }
+                  style={({ pressed }) => [
+                    rosterStyles.action,
+                    pressed && rosterStyles.dimmed,
+                    busy && rosterStyles.dimmed,
+                  ]}
+                >
+                  <TabIcon name="edit" color={theme.colors.accent} />
+                  <Text style={rosterStyles.actionLabel}>Editar</Text>
+                </Pressable>
+                <Pressable
+                  accessibilityRole="button"
+                  accessibilityLabel={`Remover ${athlete.name}`}
+                  accessibilityState={{ disabled: busy }}
+                  disabled={busy}
+                  onPress={() => {
+                    setRemoving(athlete);
+                    setError('');
+                  }}
+                  style={({ pressed }) => [
+                    rosterStyles.action,
+                    rosterStyles.remove,
+                    pressed && rosterStyles.dimmed,
+                    busy && rosterStyles.dimmed,
+                  ]}
+                >
+                  <TabIcon name="remove" color={theme.colors.accent} />
+                  <Text style={rosterStyles.actionLabel}>Remover</Text>
+                </Pressable>
+              </View>
+            )}
+          </View>
+          {removing?.id === athlete.id && (
+            <View style={rosterStyles.confirmation}>
+              <Text style={styles.label}>
+                Remover {athlete.name} do elenco e das convocações?
+              </Text>
+              {!!error && (
+                <View style={styles.field}>
+                  <Text accessibilityLiveRegion="polite" style={styles.error}>
+                    {error}
+                  </Text>
+                  <ActionButton
+                    icon="refresh"
+                    label="Atualizar lista"
+                    disabled={busy}
+                    onPress={onRemoved}
+                  />
+                </View>
+              )}
+              <View style={styles.row}>
+                <ActionButton
+                  icon="remove"
+                  label={busy ? 'Removendo…' : 'Confirmar remoção'}
+                  destructive
+                  disabled={busy}
+                  onPress={() => void remove()}
+                />
+                <ActionButton
+                  icon="cancel"
+                  label="Cancelar"
+                  disabled={busy}
+                  onPress={() => {
+                    setRemoving(null);
+                    setError('');
+                  }}
+                />
+              </View>
+            </View>
+          )}
+        </View>
+      ))}
+    </View>
+  );
+}
+
 function Records({ kind, team }: { kind: RecordKind; team: AgendaTeam }) {
   const router = useRouter();
   const screen = screens[kind];
@@ -109,42 +296,49 @@ function Records({ kind, team }: { kind: RecordKind; team: AgendaTeam }) {
       {data?.records.length === 0 && (
         <Text style={styles.text}>{screen.empty}</Text>
       )}
-      {data?.records.map((record) => (
-        <View key={record.id} style={styles.card}>
-          <Text style={styles.title}>
-            {'shirtNumber' in record
-              ? `${record.shirtNumber} · ${record.name}`
-              : record.name}
-          </Text>
-          {'shirtNumber' in record && (
-            <Text style={styles.text}>
-              {record.position} · {statuses[record.status]}
-            </Text>
+      {kind === 'athletes' && data && data.records.length > 0 && (
+        <RosterTable
+          athletes={data.records.filter(
+            (record): record is Athlete => 'shirtNumber' in record,
           )}
-          {data.team.isOwner === true && (
-            <ActionButton
-              label={`Editar ${record.name}`}
-              onPress={() =>
-                router.push({
-                  pathname: screen.editor,
-                  params: { id: record.id },
-                })
-              }
-            />
-          )}
-        </View>
-      ))}
-      {data?.team.isOwner === true && (
-        <ActionButton
-          label={screen.create}
-          primary
-          onPress={() => router.push(screen.editor)}
+          team={team}
+          isOwner={data.team.isOwner === true}
+          onRemoved={retry}
         />
       )}
-      <ActionButton
-        label="Voltar à agenda"
-        onPress={() => router.dismissTo('/agenda')}
-      />
+      {kind === 'competitions' &&
+        data?.records.map((record) => (
+          <View key={record.id} style={styles.card}>
+            <Text style={styles.title}>{record.name}</Text>
+            {data.team.isOwner === true && (
+              <ActionButton
+                icon="edit"
+                label={`Editar ${record.name}`}
+                onPress={() =>
+                  router.push({
+                    pathname: screen.editor,
+                    params: { id: record.id },
+                  })
+                }
+              />
+            )}
+          </View>
+        ))}
+      <View style={styles.row}>
+        {data?.team.isOwner === true && (
+          <ActionButton
+            icon="add"
+            label={screen.create}
+            primary
+            onPress={() => router.push(screen.editor)}
+          />
+        )}
+        <ActionButton
+          icon="back"
+          label="Voltar à agenda"
+          onPress={() => router.dismissTo('/agenda')}
+        />
+      </View>
     </HomeScreen>
   );
 }
@@ -328,24 +522,35 @@ function Editor({
                 : 'Excluir este atleta do elenco e das convocações?'
               : 'Excluir esta competição? Os jogos vinculados ficarão sem competição.'}
           </Text>
-          <ActionButton
-            label="Confirmar exclusão"
-            primary
-            disabled={busy}
-            onPress={() => void submit(true)}
-          />
-          <ActionButton
-            label="Cancelar exclusão"
-            disabled={busy}
-            onPress={() => {
-              setConfirming(false);
-              setError('');
-            }}
-          />
+          <View style={styles.row}>
+            <ActionButton
+              icon="remove"
+              label="Confirmar exclusão"
+              primary
+              disabled={busy}
+              onPress={() => void submit(true)}
+            />
+            <ActionButton
+              icon="cancel"
+              label="Cancelar exclusão"
+              disabled={busy}
+              onPress={() => {
+                setConfirming(false);
+                setError('');
+              }}
+            />
+            <ActionButton
+              icon="back"
+              label="Voltar à lista"
+              disabled={busy}
+              onPress={back}
+            />
+          </View>
         </View>
       ) : (
         <View style={styles.row}>
           <ActionButton
+            icon="save"
             label={busy ? 'Salvando…' : screen.save}
             primary
             disabled={busy}
@@ -353,6 +558,7 @@ function Editor({
           />
           {record && (
             <ActionButton
+              icon="remove"
               label={screen.remove}
               destructive
               disabled={busy}
@@ -362,9 +568,14 @@ function Editor({
               }}
             />
           )}
+          <ActionButton
+            icon="back"
+            label="Voltar à lista"
+            disabled={busy}
+            onPress={back}
+          />
         </View>
       )}
-      <ActionButton label="Voltar à lista" disabled={busy} onPress={back} />
     </>
   );
 }
@@ -415,6 +626,7 @@ function RecordEditor({
         />
       ) : (
         <ActionButton
+          icon="back"
           label="Voltar à lista"
           onPress={() => router.dismissTo(screen.list)}
         />
@@ -457,3 +669,50 @@ export function AthleteScreen() {
 export function CompetitionScreen() {
   return <TeamRecordsRoute kind="competitions" edit />;
 }
+
+const rosterStyles = StyleSheet.create({
+  table: {
+    borderWidth: 1,
+    borderColor: theme.colors.surfaceBorder,
+    borderRadius: 18,
+    overflow: 'hidden',
+    backgroundColor: theme.colors.white,
+  },
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 12,
+  },
+  header: { backgroundColor: theme.colors.accentSurface },
+  heading: { color: theme.colors.accent, fontSize: 13, fontWeight: '700' },
+  record: { borderTopWidth: 1, borderTopColor: theme.colors.surfaceBorder },
+  number: { width: 34, textAlign: 'center' },
+  player: { flex: 1, minWidth: 0 },
+  details: { gap: 4 },
+  position: { color: theme.colors.muted, fontSize: 14, lineHeight: 20 },
+  status: { color: theme.colors.muted, fontSize: 12, fontWeight: '600' },
+  unavailable: { color: theme.colors.accent },
+  actions: { width: 96, flexDirection: 'row', gap: 4 },
+  action: {
+    width: 46,
+    minHeight: 56,
+    gap: 4,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 6,
+    borderWidth: 1,
+    borderRadius: 12,
+    borderColor: theme.colors.surfaceBorder,
+    backgroundColor: theme.colors.white,
+  },
+  actionLabel: { color: theme.colors.accent, fontSize: 11, fontWeight: '700' },
+  remove: { backgroundColor: theme.colors.accentSurface },
+  dimmed: { opacity: 0.55 },
+  confirmation: {
+    padding: 12,
+    gap: 12,
+    backgroundColor: theme.colors.accentSurface,
+  },
+});

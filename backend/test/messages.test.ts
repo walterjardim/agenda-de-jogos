@@ -4,7 +4,11 @@ import { test } from "node:test";
 import { buildApp } from "../src/app.js";
 import type { PrismaClient } from "../src/generated/prisma/client.js";
 import { createDatabase } from "../src/database.js";
-import { buildMatchMessage, messageSelect } from "../src/matches/message.js";
+import {
+  buildMatchMessage,
+  messageSelect,
+  uniformColorEmoji,
+} from "../src/matches/message.js";
 
 function example() {
   return {
@@ -13,9 +17,21 @@ function example() {
     startsAt: new Date("2026-10-12T12:00:00Z"),
     competition: { name: "Copa Municipal 2026" },
     location: "Campo Municipal",
-    shirtPiece: { uniformName: "Casa", description: "Azul" },
-    shortsPiece: { uniformName: "Fora", description: "Branco" },
-    socksPiece: { uniformName: "Casa", description: "Azul" },
+    shirtPiece: {
+      uniformName: "Casa",
+      description: "Azul",
+      colorHex: "#1E40AF",
+    },
+    shortsPiece: {
+      uniformName: "Fora",
+      description: "Branco",
+      colorHex: "#FFFFFF",
+    },
+    socksPiece: {
+      uniformName: "Casa",
+      description: "Azul",
+      colorHex: "#1E40AF",
+    },
     refereeFeeCents: 1500,
     notes:
       "Levar RG\nLevar caneleira\nPix para pagamento da taxa: chave informada pelo time",
@@ -26,6 +42,30 @@ function example() {
   };
 }
 
+test("ícone representa o hexadecimal e trata cores neutras e tons próximos", () => {
+  for (const [hex, emoji] of [
+    ["#000000", "⚫"],
+    ["#ffffff", "⚪"],
+    ["#808080", "🔘"],
+    ["#E2222B", "🔴"],
+    ["#F57C00", "🟠"],
+    ["#FDD835", "🟡"],
+    ["#15803D", "🟢"],
+    ["#1e40af", "🔵"],
+    ["#8E24AA", "🟣"],
+    ["#795548", "🟤"],
+  ])
+    assert.equal(uniformColorEmoji(hex!), emoji);
+  const match = example();
+  const message = buildMatchMessage(
+    { ...match, shirtPiece: { description: "Listrada", colorHex: "#E2222B" } },
+    "America/Sao_Paulo",
+    "sheet",
+  );
+  assert.match(message.text, /🔴 Camisa: Listrada/);
+  assert.doesNotMatch(message.text, /Casa —/);
+});
+
 test("mensagem segue o texto do MVP e codifica o conteúdo completo", () => {
   const match = example();
   const message = buildMatchMessage(match, "America/Sao_Paulo", "callup");
@@ -33,21 +73,23 @@ test("mensagem segue o texto do MVP e codifica o conteúdo completo", () => {
   assert.equal(
     message.text,
     [
-      "⚽ Escolinha Tigres (Sub-11) x Tigres",
+      "Relação Copa Municipal 2026",
+      "",
+      "⚽ *Escolinha Tigres x Tigres*",
       "🏆 Competição: Copa Municipal 2026",
-      "📅 Jogo: Seg, 12/10/2026 às 09:00",
-      "⏰ Chegada dos atletas: Seg, 12/10/2026 às 08:00",
+      "📅 *Data: Seg, 12/10/2026 às 09:00*",
+      "⏰ Chegada dos atletas: 08:00",
       "📍 Campo Municipal",
-      "👕 Camisa: Casa — Azul",
-      "🩳 Calção: Fora — Branco",
-      "🧦 Meião: Casa — Azul",
+      "🔵 Camisa: Azul",
+      "⚪ Calção: Branco",
+      "🔵 Meião: Azul",
       "💰 Taxa de arbitragem: R$ 15,00 por atleta",
       "📝 Observações:",
       match.notes,
       "",
       "Convocados:",
-      "1 - João Silva (Goleiro)",
-      "4 - Pedro Lima (Zagueiro)",
+      "1 - João Silva",
+      "4 - Pedro Lima",
     ].join("\n"),
   );
   assert.equal(
@@ -76,9 +118,11 @@ test("ficha vazia, campos opcionais, taxa zero e chegada no dia anterior", () =>
   assert.equal(
     sheet.text,
     [
-      "⚽ Escolinha Tigres (Sub-11) x Tigres",
-      "📅 Jogo: Qui, 01/01/2026 às 00:30",
-      "⏰ Chegada dos atletas: Qua, 31/12/2025 às 23:30",
+      "Relação",
+      "",
+      "⚽ *Escolinha Tigres x Tigres*",
+      "📅 *Data: Qui, 01/01/2026 às 00:30*",
+      "⏰ Chegada dos atletas: 23:30",
     ].join("\n"),
   );
   assert.throws(() => buildMatchMessage(match, "America/Sao_Paulo", "callup"), {
@@ -95,7 +139,7 @@ test("ficha vazia, campos opcionais, taxa zero e chegada no dia anterior", () =>
     "America/Sao_Paulo",
     "sheet",
   );
-  assert.match(mixed.text, /Camisa: Casa — Azul/);
+  assert.match(mixed.text, /🔵 Camisa: Azul/);
   assert.doesNotMatch(mixed.text, /Calção|Meião/);
   const changedTimezone = buildMatchMessage(match, "Asia/Tokyo", "sheet");
   assert.match(changedTimezone.text, /01\/01\/2026 às 12:30/);
@@ -104,8 +148,8 @@ test("ficha vazia, campos opcionais, taxa zero e chegada no dia anterior", () =>
     "America/New_York",
     "sheet",
   );
-  assert.match(dst.text, /Jogo: Dom, 08\/03\/2026 às 03:30/);
-  assert.match(dst.text, /Chegada dos atletas: Dom, 08\/03\/2026 às 01:30/);
+  assert.match(dst.text, /\*Data: Dom, 08\/03\/2026 às 03:30\*/);
+  assert.match(dst.text, /Chegada dos atletas: 01:30/);
 });
 
 test("limiar de 2000 caracteres preserva observações e emojis sem truncar", () => {
@@ -323,7 +367,7 @@ test(
     );
     await db.uniformPiece.update({
       where: { id: shirt.id },
-      data: { description: "Vermelha" },
+      data: { description: "Vermelha", colorHex: "#E53935" },
     });
     await db.competition.update({
       where: { id: competition.id },
@@ -334,7 +378,7 @@ test(
       data: { name: "Nome novo" },
     });
     const changed = (await app.inject({ url, headers: owner.headers })).json();
-    assert.match(changed.text, /Casa — Vermelha/);
+    assert.match(changed.text, /🔴 Camisa: Vermelha/);
     assert.match(changed.text, /Copa nova/);
     assert.match(changed.text, /9 - Nome novo/);
     await db.teamFollow.delete({

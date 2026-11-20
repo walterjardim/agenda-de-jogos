@@ -105,6 +105,7 @@ export function ChooseTeamScreen({
           onSubmitEditing={search}
         />
         <ActionButton
+          icon="search"
           label="Buscar"
           onPress={search}
           disabled={!!busy || (!mine && input.trim().length < 2)}
@@ -151,6 +152,7 @@ export function ChooseTeamScreen({
               </Text>
               {team.isOwner || team.isFollowing ? (
                 <ActionButton
+                  icon="save"
                   label={
                     busy === team.id
                       ? 'Salvando…'
@@ -164,6 +166,7 @@ export function ChooseTeamScreen({
                 />
               ) : (
                 <ActionButton
+                  icon="follow"
                   label={busy === team.id ? 'Seguindo…' : 'Seguir'}
                   primary
                   disabled={!!busy}
@@ -174,6 +177,7 @@ export function ChooseTeamScreen({
           ))}
           {state.data.nextCursor && (
             <ActionButton
+              icon="chevron"
               label="Próxima página"
               disabled={!!busy}
               onPress={() => setCursor(state.data.nextCursor!)}
@@ -181,37 +185,44 @@ export function ChooseTeamScreen({
           )}
         </>
       )}
-      {cursor && (
+      <View style={styles.row}>
+        {cursor && (
+          <ActionButton
+            icon="back"
+            label="Voltar ao início da lista"
+            disabled={!!busy}
+            onPress={() => setCursor(undefined)}
+          />
+        )}
         <ActionButton
-          label="Voltar ao início da lista"
-          disabled={!!busy}
-          onPress={() => setCursor(undefined)}
+          icon="refresh"
+          label="Atualizar lista"
+          disabled={!!busy || state.status === 'loading'}
+          onPress={retry}
         />
-      )}
-      <ActionButton
-        label="Atualizar lista"
-        disabled={!!busy || state.status === 'loading'}
-        onPress={retry}
-      />
-      {mine && (
+        {mine && (
+          <ActionButton
+            icon="search"
+            label="Buscar outros times"
+            disabled={!!busy}
+            onPress={() => router.replace('/buscar')}
+          />
+        )}
         <ActionButton
-          label="Buscar outros times"
+          icon="teams"
+          label="Gerenciar minhas equipes"
           disabled={!!busy}
-          onPress={() => router.replace('/buscar')}
+          onPress={() => router.navigate('/meus-times')}
         />
-      )}
-      <ActionButton
-        label="Gerenciar minhas equipes"
-        disabled={!!busy}
-        onPress={() => router.navigate('/meus-times')}
-      />
-      {session?.user.activeTeamId && (
-        <ActionButton
-          label="Voltar à agenda"
-          disabled={!!busy}
-          onPress={() => router.replace('/agenda')}
-        />
-      )}
+        {session?.user.activeTeamId && (
+          <ActionButton
+            icon="back"
+            label="Voltar à agenda"
+            disabled={!!busy}
+            onPress={() => router.replace('/agenda')}
+          />
+        )}
+      </View>
     </HomeScreen>
   );
 }

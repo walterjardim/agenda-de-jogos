@@ -108,7 +108,7 @@ export function MatchLoadError({
           ? 'Os dados do time ou o serviço solicitado estão indisponíveis.'
           : 'Não foi possível carregar os dados. Confira a conexão.'}
       </Text>
-      <ActionButton label="Tentar novamente" onPress={retry} />
+      <ActionButton icon="refresh" label="Tentar novamente" onPress={retry} />
     </View>
   );
 }

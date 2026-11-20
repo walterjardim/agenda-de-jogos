@@ -32,9 +32,11 @@ import { previewMessage } from '../preview';
 function Message({
   text,
   whatsappUrl,
+  onBack,
 }: {
   text: string;
   whatsappUrl: string | null;
+  onBack: () => void;
 }) {
   const [notice, setNotice] = useState('');
 
@@ -75,19 +77,22 @@ function Message({
             : 'Use o compartilhamento do dispositivo ou copie o conteúdo completo.'}
         </Text>
       )}
-      {(whatsappUrl || Platform.OS !== 'web') && (
+      <View style={styles.row}>
+        {(whatsappUrl || Platform.OS !== 'web') && (
+          <ActionButton
+            icon="share"
+            label={whatsappUrl ? 'Enviar no WhatsApp' : 'Compartilhar texto'}
+            primary
+            onPress={() => void send()}
+          />
+        )}
         <ActionButton
-          label={whatsappUrl ? 'Enviar no WhatsApp' : 'Compartilhar texto'}
-          primary
-          fullWidth
-          onPress={() => void send()}
+          icon="copy"
+          label="Copiar texto"
+          onPress={() => void copy()}
         />
-      )}
-      <ActionButton
-        label="Copiar texto"
-        fullWidth
-        onPress={() => void copy()}
-      />
+        <ActionButton icon="back" label="Voltar à ficha" onPress={onBack} />
+      </View>
       {Boolean(notice) && (
         <Text accessibilityLiveRegion="polite" style={styles.text}>
           {notice}
@@ -192,14 +197,24 @@ function ShareMatch({
             key={type}
             text={state.data.text}
             whatsappUrl={state.data.whatsappUrl}
+            onBack={() =>
+              router.dismissTo({ pathname: '/jogo/[id]', params: { id } })
+            }
           />
         )}
-      <ActionButton
-        label="Voltar à ficha"
-        onPress={() =>
-          router.dismissTo({ pathname: '/jogo/[id]', params: { id } })
-        }
-      />
+      {!(
+        state.status === 'ready' &&
+        state.data?.type === type &&
+        state.data.text
+      ) && (
+        <ActionButton
+          icon="back"
+          label="Voltar à ficha"
+          onPress={() =>
+            router.dismissTo({ pathname: '/jogo/[id]', params: { id } })
+          }
+        />
+      )}
     </HomeScreen>
   );
 }

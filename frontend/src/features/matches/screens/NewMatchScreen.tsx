@@ -210,6 +210,7 @@ function MatchForm({
           Jogo salvo para {draft.date}, fora da semana exibida na agenda.
         </Text>
         <ActionButton
+          icon="back"
           label="Voltar à agenda"
           onPress={() => router.dismissTo('/agenda')}
         />
@@ -290,6 +291,7 @@ function MatchForm({
         </Text>
         {match && (
           <ActionButton
+            icon="uniform"
             label="Aplicar padrões de uniforme"
             disabled={busy}
             onPress={() =>
@@ -360,12 +362,18 @@ function MatchForm({
       )}
       <View style={styles.row}>
         <ActionButton
+          icon="save"
           label={busy ? 'Salvando…' : 'Salvar jogo'}
           primary
           disabled={busy}
           onPress={() => void save()}
         />
-        <ActionButton label="Cancelar" disabled={busy} onPress={back} />
+        <ActionButton
+          icon="cancel"
+          label="Cancelar"
+          disabled={busy}
+          onPress={back}
+        />
       </View>
     </>
   );
@@ -424,6 +432,7 @@ function MatchEditor({
         />
       ) : (
         <ActionButton
+          icon="back"
           label={matchId ? 'Voltar à ficha' : 'Voltar à agenda'}
           onPress={back}
         />

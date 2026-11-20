@@ -8,18 +8,53 @@ export const messageSelect = {
   location: true,
   notes: true,
   refereeFeeCents: true,
-  team: { select: { name: true, category: true } },
+  team: { select: { name: true } },
   competition: { select: { name: true } },
-  shirtPiece: { select: { uniformName: true, description: true } },
-  shortsPiece: { select: { uniformName: true, description: true } },
-  socksPiece: { select: { uniformName: true, description: true } },
+  shirtPiece: { select: { colorHex: true, description: true } },
+  shortsPiece: { select: { colorHex: true, description: true } },
+  socksPiece: { select: { colorHex: true, description: true } },
   callups: {
     orderBy: { athlete: { shirtNumber: "asc" } },
     select: {
-      athlete: { select: { name: true, shirtNumber: true, position: true } },
+      athlete: { select: { name: true, shirtNumber: true } },
     },
   },
 } satisfies Prisma.MatchSelect;
+
+const uniformColors = [
+  ["⚫", "#000000"],
+  ["🔘", "#808080"],
+  ["⚪", "#FFFFFF"],
+  ["🔴", "#E53935"],
+  ["🟠", "#F57C00"],
+  ["🟡", "#FDD835"],
+  ["🟢", "#43A047"],
+  ["🔵", "#1E40AF"],
+  ["🟣", "#8E24AA"],
+  ["🟤", "#795548"],
+] as const;
+
+export function uniformColorEmoji(colorHex: string) {
+  if (!/^#[0-9a-f]{6}$/i.test(colorHex)) return "⚪";
+  const channels = [1, 3, 5].map((offset) =>
+    parseInt(colorHex.slice(offset, offset + 2), 16),
+  );
+  const neutral = Math.max(...channels) - Math.min(...channels) <= 24;
+  const palette = neutral ? uniformColors.slice(0, 3) : uniformColors;
+  let closest: string = palette[0]![0];
+  let shortestDistance = Infinity;
+  for (const [emoji, hex] of palette) {
+    const distance = channels.reduce((total, channel, index) => {
+      const candidate = parseInt(hex.slice(1 + index * 2, 3 + index * 2), 16);
+      return total + (channel - candidate) ** 2;
+    }, 0);
+    if (distance < shortestDistance) {
+      closest = emoji;
+      shortestDistance = distance;
+    }
+  }
+  return closest;
+}
 
 const weekdays = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 
@@ -43,22 +78,31 @@ export function buildMatchMessage(
     );
   }
   const startsAt = Temporal.Instant.from(match.startsAt.toISOString());
+  const arrivalTime = startsAt
+    .subtract({ hours: 1 })
+    .toZonedDateTimeISO(timezone)
+    .toPlainTime()
+    .toString({ smallestUnit: "minute" });
   const lines = [
-    `⚽ ${match.team.name} (${match.team.category}) x ${match.opponent}`,
+    match.competition ? `Relação ${match.competition.name}` : "Relação",
+    "",
+    `⚽ *${match.team.name} x ${match.opponent}*`,
   ];
   if (match.competition) lines.push(`🏆 Competição: ${match.competition.name}`);
   lines.push(
-    `📅 Jogo: ${messageTime(startsAt, timezone)}`,
-    `⏰ Chegada dos atletas: ${messageTime(startsAt.subtract({ hours: 1 }), timezone)}`,
+    `📅 *Data: ${messageTime(startsAt, timezone)}*`,
+    `⏰ Chegada dos atletas: ${arrivalTime}`,
   );
   if (match.location) lines.push(`📍 ${match.location}`);
   for (const [label, piece] of [
-    ["👕 Camisa", match.shirtPiece],
-    ["🩳 Calção", match.shortsPiece],
-    ["🧦 Meião", match.socksPiece],
+    ["Camisa", match.shirtPiece],
+    ["Calção", match.shortsPiece],
+    ["Meião", match.socksPiece],
   ] as const) {
     if (piece)
-      lines.push(`${label}: ${piece.uniformName} — ${piece.description}`);
+      lines.push(
+        `${uniformColorEmoji(piece.colorHex)} ${label}: ${piece.description}`,
+      );
   }
   if (match.refereeFeeCents !== null) {
     const fee = new Intl.NumberFormat("pt-BR", {
@@ -75,8 +119,7 @@ export function buildMatchMessage(
       "",
       "Convocados:",
       ...match.callups.map(
-        ({ athlete }) =>
-          `${athlete.shirtNumber} - ${athlete.name} (${athlete.position})`,
+        ({ athlete }) => `${athlete.shirtNumber} - ${athlete.name}`,
       ),
     );
   }

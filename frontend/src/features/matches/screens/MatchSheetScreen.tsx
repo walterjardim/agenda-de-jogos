@@ -129,34 +129,53 @@ function MatchSheet({ id, team }: { id: string; team: AgendaTeam }) {
             )}
             <Text style={styles.label}>Convocados · {match.callupsCount}</Text>
           </View>
-          <ActionButton
-            label="Compartilhar ficha no WhatsApp"
-            primary
-            fullWidth
-            disabled={confirming}
-            onPress={() =>
-              router.push({
-                pathname: '/compartilhar/[id]',
-                params: { id, type: 'sheet' },
-              })
-            }
-          />
-          <ActionButton
-            label="Selecionar atletas"
-            fullWidth
-            disabled={confirming}
-            onPress={() =>
-              router.push({ pathname: '/convocacao/[id]', params: { id } })
-            }
-          />
-          <ActionButton
-            label="Editar jogo"
-            disabled={confirming}
-            onPress={() =>
-              router.push({ pathname: '/editar-jogo/[id]', params: { id } })
-            }
-          />
-          {confirming ? (
+          <View style={styles.row}>
+            <ActionButton
+              icon="share"
+              label="Compartilhar ficha no WhatsApp"
+              primary
+              disabled={confirming}
+              onPress={() =>
+                router.push({
+                  pathname: '/compartilhar/[id]',
+                  params: { id, type: 'sheet' },
+                })
+              }
+            />
+            <ActionButton
+              icon="teams"
+              label="Selecionar atletas"
+              disabled={confirming}
+              onPress={() =>
+                router.push({ pathname: '/convocacao/[id]', params: { id } })
+              }
+            />
+          </View>
+          <View style={styles.row}>
+            <ActionButton
+              icon="edit"
+              label="Editar jogo"
+              disabled={confirming}
+              onPress={() =>
+                router.push({ pathname: '/editar-jogo/[id]', params: { id } })
+              }
+            />
+            {!confirming && (
+              <ActionButton
+                icon="remove"
+                label="Excluir jogo"
+                destructive
+                onPress={() => setConfirming(true)}
+              />
+            )}
+            <ActionButton
+              icon="back"
+              label="Voltar à agenda"
+              disabled={deleting}
+              onPress={() => router.dismissTo('/agenda')}
+            />
+          </View>
+          {confirming && (
             <View style={[styles.card, styles.highlighted]}>
               <Text style={styles.label}>
                 Excluir este jogo e sua convocação?
@@ -168,12 +187,14 @@ function MatchSheet({ id, team }: { id: string; team: AgendaTeam }) {
               )}
               <View style={styles.row}>
                 <ActionButton
+                  icon="remove"
                   label={deleting ? 'Excluindo…' : 'Confirmar exclusão'}
                   primary
                   disabled={deleting}
                   onPress={() => void remove()}
                 />
                 <ActionButton
+                  icon="cancel"
                   label="Cancelar exclusão"
                   disabled={deleting}
                   onPress={() => {
@@ -184,20 +205,17 @@ function MatchSheet({ id, team }: { id: string; team: AgendaTeam }) {
                 />
               </View>
             </View>
-          ) : (
-            <ActionButton
-              label="Excluir jogo"
-              destructive
-              onPress={() => setConfirming(true)}
-            />
           )}
         </>
       )}
-      <ActionButton
-        label="Voltar à agenda"
-        disabled={deleting}
-        onPress={() => router.dismissTo('/agenda')}
-      />
+      {!match && (
+        <ActionButton
+          icon="back"
+          label="Voltar à agenda"
+          disabled={deleting}
+          onPress={() => router.dismissTo('/agenda')}
+        />
+      )}
     </HomeScreen>
   );
 }

@@ -190,6 +190,7 @@ export function ManageTeamsScreen({ token }: { token: string }) {
       description="Acesse seus times próprios e seguidos."
     >
       <ActionButton
+        icon="check"
         label="Escolher ou trocar time"
         disabled={busy}
         onPress={() => router.push('/trocar-time')}
@@ -216,20 +217,25 @@ export function ManageTeamsScreen({ token }: { token: string }) {
               }
             />
           ))}
-          <ActionButton
-            label={busy ? 'Salvando…' : 'Salvar time'}
-            primary
-            disabled={busy || fields.some(({ key }) => !form[key].trim())}
-            onPress={() => void submit()}
-          />
-          <ActionButton
-            label="Cancelar"
-            disabled={busy}
-            onPress={() => setForm(null)}
-          />
+          <View style={styles.row}>
+            <ActionButton
+              icon="save"
+              label={busy ? 'Salvando…' : 'Salvar time'}
+              primary
+              disabled={busy || fields.some(({ key }) => !form[key].trim())}
+              onPress={() => void submit()}
+            />
+            <ActionButton
+              icon="cancel"
+              label="Cancelar"
+              disabled={busy}
+              onPress={() => setForm(null)}
+            />
+          </View>
         </View>
       ) : (
         <ActionButton
+          icon="add"
           label="Cadastrar time"
           primary
           disabled={loading || loadFailed || busy}
@@ -260,6 +266,7 @@ export function ManageTeamsScreen({ token }: { token: string }) {
             </Text>
             <Text style={styles.text}>{team.athletesCount ?? 0} atletas</Text>
             <ActionButton
+              icon="check"
               label={
                 team.id === session?.user.activeTeamId
                   ? 'Abrir agenda'
@@ -277,20 +284,25 @@ export function ManageTeamsScreen({ token }: { token: string }) {
                       ? 'Deixar de seguir este time? Você continuará com acesso como criador.'
                       : 'Deixar de seguir este time? Você perderá acesso aos jogos. Os dados do time serão preservados.'}
                   </Text>
-                  <ActionButton
-                    label="Confirmar deixar de seguir"
-                    destructive
-                    disabled={busy}
-                    onPress={() => void leave(team)}
-                  />
-                  <ActionButton
-                    label="Cancelar"
-                    disabled={busy}
-                    onPress={() => setConfirmUnfollow(undefined)}
-                  />
+                  <View style={styles.row}>
+                    <ActionButton
+                      icon="unfollow"
+                      label="Confirmar deixar de seguir"
+                      destructive
+                      disabled={busy}
+                      onPress={() => void leave(team)}
+                    />
+                    <ActionButton
+                      icon="cancel"
+                      label="Cancelar"
+                      disabled={busy}
+                      onPress={() => setConfirmUnfollow(undefined)}
+                    />
+                  </View>
                 </View>
               ) : (
                 <ActionButton
+                  icon="unfollow"
                   label="Deixar de seguir"
                   destructive
                   disabled={busy || !!form}
@@ -308,26 +320,32 @@ export function ManageTeamsScreen({ token }: { token: string }) {
                       Excluir este time permanentemente? Ele também será
                       removido dos seguidores e das seleções de agenda.
                     </Text>
-                    <ActionButton
-                      label="Confirmar exclusão"
-                      destructive
-                      disabled={busy}
-                      onPress={() => void submit(team.id)}
-                    />
-                    <ActionButton
-                      label="Cancelar exclusão"
-                      disabled={busy}
-                      onPress={() => setConfirmDelete(undefined)}
-                    />
+                    <View style={styles.row}>
+                      <ActionButton
+                        icon="remove"
+                        label="Confirmar exclusão"
+                        destructive
+                        disabled={busy}
+                        onPress={() => void submit(team.id)}
+                      />
+                      <ActionButton
+                        icon="cancel"
+                        label="Cancelar exclusão"
+                        disabled={busy}
+                        onPress={() => setConfirmDelete(undefined)}
+                      />
+                    </View>
                   </>
                 ) : (
-                  <>
+                  <View style={styles.row}>
                     <ActionButton
+                      icon="edit"
                       label="Editar"
                       disabled={busy || !!form}
                       onPress={() => edit(team)}
                     />
                     <ActionButton
+                      icon="remove"
                       label="Excluir"
                       destructive
                       disabled={busy || !!form}
@@ -336,7 +354,7 @@ export function ManageTeamsScreen({ token }: { token: string }) {
                         setConfirmDelete(team.id);
                       }}
                     />
-                  </>
+                  </View>
                 )}
               </>
             )}
@@ -344,6 +362,7 @@ export function ManageTeamsScreen({ token }: { token: string }) {
         ))
       )}
       <ActionButton
+        icon="refresh"
         label={loadFailed ? 'Tentar novamente' : 'Atualizar lista'}
         disabled={busy || loading || !!form}
         onPress={() => {

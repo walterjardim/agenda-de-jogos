@@ -174,3 +174,38 @@ export function defaultPiece(
 export function pieceLabel(piece: UniformPiece) {
   return `${piece.uniformName} · ${piece.description}`;
 }
+
+const uniformColors = [
+  ['⚫', '#000000'],
+  ['🔘', '#808080'],
+  ['⚪', '#FFFFFF'],
+  ['🔴', '#E53935'],
+  ['🟠', '#F57C00'],
+  ['🟡', '#FDD835'],
+  ['🟢', '#43A047'],
+  ['🔵', '#1E40AF'],
+  ['🟣', '#8E24AA'],
+  ['🟤', '#795548'],
+] as const;
+
+export function uniformColorEmoji(colorHex: string) {
+  if (!/^#[0-9a-f]{6}$/i.test(colorHex)) return '⚪';
+  const channels = [1, 3, 5].map((offset) =>
+    parseInt(colorHex.slice(offset, offset + 2), 16),
+  );
+  const neutral = Math.max(...channels) - Math.min(...channels) <= 24;
+  const palette = neutral ? uniformColors.slice(0, 3) : uniformColors;
+  let closest: string = palette[0]![0];
+  let shortestDistance = Infinity;
+  for (const [emoji, hex] of palette) {
+    const distance = channels.reduce((total, channel, index) => {
+      const candidate = parseInt(hex.slice(1 + index * 2, 3 + index * 2), 16);
+      return total + (channel - candidate) ** 2;
+    }, 0);
+    if (distance < shortestDistance) {
+      closest = emoji;
+      shortestDistance = distance;
+    }
+  }
+  return closest;
+}

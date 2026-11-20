@@ -105,6 +105,7 @@ function UniformList({ team }: { team: AgendaTeam }) {
           <PieceCard piece={piece} />
           {data?.team.isOwner === true && (
             <ActionButton
+              icon="edit"
               label={`Editar ${labels[piece.pieceType].toLowerCase()} ${piece.uniformName}`}
               onPress={() =>
                 router.push({ pathname: '/uniforme', params: { id: piece.id } })
@@ -113,17 +114,21 @@ function UniformList({ team }: { team: AgendaTeam }) {
           )}
         </View>
       ))}
-      {data?.team.isOwner === true && (
+      <View style={styles.row}>
+        {data?.team.isOwner === true && (
+          <ActionButton
+            icon="add"
+            label="Nova peça"
+            primary
+            onPress={() => router.push('/uniforme')}
+          />
+        )}
         <ActionButton
-          label="Nova peça"
-          primary
-          onPress={() => router.push('/uniforme')}
+          icon="back"
+          label="Voltar à agenda"
+          onPress={() => router.dismissTo('/agenda')}
         />
-      )}
-      <ActionButton
-        label="Voltar à agenda"
-        onPress={() => router.dismissTo('/agenda')}
-      />
+      </View>
     </HomeScreen>
   );
 }
@@ -327,24 +332,35 @@ function UniformForm({
           <Text style={styles.label}>
             Excluir esta peça? Os jogos que a utilizam ficarão sem essa peça.
           </Text>
-          <ActionButton
-            label="Confirmar exclusão"
-            primary
-            disabled={busy}
-            onPress={() => void submit(true)}
-          />
-          <ActionButton
-            label="Cancelar exclusão"
-            disabled={busy}
-            onPress={() => {
-              setConfirming(false);
-              setError('');
-            }}
-          />
+          <View style={styles.row}>
+            <ActionButton
+              icon="remove"
+              label="Confirmar exclusão"
+              primary
+              disabled={busy}
+              onPress={() => void submit(true)}
+            />
+            <ActionButton
+              icon="cancel"
+              label="Cancelar exclusão"
+              disabled={busy}
+              onPress={() => {
+                setConfirming(false);
+                setError('');
+              }}
+            />
+            <ActionButton
+              icon="back"
+              label="Voltar à lista"
+              disabled={busy}
+              onPress={() => router.dismissTo('/uniformes')}
+            />
+          </View>
         </View>
       ) : (
         <View style={styles.row}>
           <ActionButton
+            icon="save"
             label={busy ? 'Salvando…' : 'Salvar peça'}
             primary
             disabled={busy}
@@ -352,6 +368,7 @@ function UniformForm({
           />
           {piece && (
             <ActionButton
+              icon="remove"
               label="Excluir peça"
               destructive
               disabled={busy}
@@ -361,13 +378,14 @@ function UniformForm({
               }}
             />
           )}
+          <ActionButton
+            icon="back"
+            label="Voltar à lista"
+            disabled={busy}
+            onPress={() => router.dismissTo('/uniformes')}
+          />
         </View>
       )}
-      <ActionButton
-        label="Voltar à lista"
-        disabled={busy}
-        onPress={() => router.dismissTo('/uniformes')}
-      />
     </>
   );
 }
@@ -399,6 +417,7 @@ function UniformEditor({ team, id }: { team: AgendaTeam; id?: string }) {
         <UniformForm key={id ?? 'new'} team={team} piece={piece} />
       ) : (
         <ActionButton
+          icon="back"
           label="Voltar à lista"
           onPress={() => router.dismissTo('/uniformes')}
         />

@@ -1,8 +1,10 @@
 import { Pressable, StyleSheet, Text } from 'react-native';
+import { Icon, type IconName } from './Icon';
 import { theme } from '../theme/theme';
 
 export function ActionButton({
   label,
+  icon,
   onPress,
   primary = false,
   disabled = false,
@@ -10,6 +12,7 @@ export function ActionButton({
   fullWidth = false,
 }: {
   label: string;
+  icon?: IconName;
   onPress: () => void;
   primary?: boolean;
   disabled?: boolean;
@@ -31,6 +34,12 @@ export function ActionButton({
         disabled && styles.disabled,
       ]}
     >
+      {icon && (
+        <Icon
+          name={icon}
+          color={primary ? theme.colors.white : theme.colors.accent}
+        />
+      )}
       <Text style={[styles.label, primary && styles.primaryLabel]}>
         {label}
       </Text>
@@ -44,6 +53,9 @@ const styles = StyleSheet.create({
     maxWidth: '100%',
     minHeight: 48,
     justifyContent: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
     paddingHorizontal: 16,
     paddingVertical: 10,
     borderWidth: 1,
@@ -58,6 +70,7 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.accent,
   },
   label: {
+    flexShrink: 1,
     color: theme.colors.accent,
     fontSize: 15,
     fontWeight: '700',

@@ -167,24 +167,27 @@ function Selection({
           {error}
         </Text>
       )}
-      <ActionButton
-        label={busy ? 'Salvando…' : 'Salvar convocação'}
-        primary
-        fullWidth
-        disabled={busy}
-        onPress={() => void submit(false)}
-      />
-      <ActionButton
-        label="Compartilhar convocação"
-        fullWidth
-        disabled={busy || count === 0}
-        onPress={() => void submit(true)}
-      />
-      <ActionButton
-        label="Voltar à ficha"
-        disabled={busy}
-        onPress={() => router.dismissTo(sheet)}
-      />
+      <View style={styles.row}>
+        <ActionButton
+          icon="save"
+          label={busy ? 'Salvando…' : 'Salvar convocação'}
+          primary
+          disabled={busy}
+          onPress={() => void submit(false)}
+        />
+        <ActionButton
+          icon="share"
+          label="Compartilhar convocação"
+          disabled={busy || count === 0}
+          onPress={() => void submit(true)}
+        />
+        <ActionButton
+          icon="back"
+          label="Voltar à ficha"
+          disabled={busy}
+          onPress={() => router.dismissTo(sheet)}
+        />
+      </View>
     </>
   );
 }
@@ -226,6 +229,7 @@ function Callups({ id, team }: { id: string; team: AgendaTeam }) {
         <Selection {...data} token={token} />
       ) : (
         <ActionButton
+          icon="back"
           label="Voltar à ficha"
           onPress={() =>
             router.dismissTo({ pathname: '/jogo/[id]', params: { id } })

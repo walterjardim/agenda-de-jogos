@@ -3,6 +3,7 @@ import {
   defaultPiece,
   formatFee,
   formatGameTime,
+  uniformColorEmoji,
   type MessageType,
   type Athlete,
   type Callup,
@@ -134,22 +135,26 @@ export function previewMessage(
   if (type === 'callup' && match.callups.length === 0) return '';
 
   const lines = [
-    `⚽ ${previewTeam.name} (${previewTeam.category}) x ${match.opponent}`,
+    match.competition ? `Relação ${match.competition.name}` : 'Relação',
+    '',
+    `⚽ *${previewTeam.name} x ${match.opponent}*`,
   ];
   if (match.competition) lines.push(`🏆 Competição: ${match.competition.name}`);
-  lines.push(`📅 Jogo: ${messageTime(match.startsAt, timezone)}`);
+  lines.push(`📅 *Data: ${messageTime(match.startsAt, timezone)}*`);
   lines.push(
-    `⏰ Chegada dos atletas: ${messageTime(match.arrivalAt, timezone)}`,
+    `⏰ Chegada dos atletas: ${formatGameTime(match.arrivalAt, timezone, false)}`,
   );
   if (match.location) lines.push(`📍 ${match.location}`);
 
   for (const [label, piece] of [
-    ['👕 Camisa', match.shirtPiece],
-    ['🩳 Calção', match.shortsPiece],
-    ['🧦 Meião', match.socksPiece],
+    ['Camisa', match.shirtPiece],
+    ['Calção', match.shortsPiece],
+    ['Meião', match.socksPiece],
   ] as const) {
     if (piece)
-      lines.push(`${label}: ${piece.uniformName} — ${piece.description}`);
+      lines.push(
+        `${uniformColorEmoji(piece.colorHex)} ${label}: ${piece.description}`,
+      );
   }
 
   if (match.refereeFeeCents !== null) {
@@ -164,10 +169,7 @@ export function previewMessage(
       'Convocados:',
       ...[...match.callups]
         .sort((a, b) => a.shirtNumber - b.shirtNumber)
-        .map(
-          ({ shirtNumber, name, position }) =>
-            `${shirtNumber} - ${name} (${position})`,
-        ),
+        .map(({ shirtNumber, name }) => `${shirtNumber} - ${name}`),
     );
   }
   return lines.join('\n');

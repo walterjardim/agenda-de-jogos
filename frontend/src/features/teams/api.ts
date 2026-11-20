@@ -3,8 +3,15 @@ import type { Athlete, Competition } from '../matches/model';
 
 export type TeamInput = { name: string; sport: string; category: string };
 export type Team = TeamInput & { id: string; createdAt: string };
+export type TeamSummary = TeamInput & {
+  id: string;
+  isOwner: boolean;
+  isFollowing: boolean;
+  athletesCount?: number;
+  nextMatchAt?: string | null;
+};
 export type TeamPage = {
-  data: (Team & { isOwner: boolean })[];
+  data: TeamSummary[];
   nextCursor: string | null;
 };
 
@@ -14,9 +21,44 @@ export function searchTeams(
   mine: boolean,
   cursor?: string,
 ): Promise<TeamPage> {
-  const query = new URLSearchParams({ q, mine: String(mine) });
+  if (!mine && q.trim().length < 2)
+    return Promise.resolve({ data: [], nextCursor: null });
+  const query = new URLSearchParams({ q });
+  if (mine) query.set('mine', 'true');
   if (cursor) query.set('cursor', cursor);
-  return request(`/teams?${query}`, { token });
+  return request(`${mine ? '/teams' : '/teams/search'}?${query}`, { token });
+}
+
+export async function listMyTeams(token: string): Promise<TeamSummary[]> {
+  const teams: TeamSummary[] = [];
+  const cursors = new Set<string>();
+  let cursor: string | undefined;
+  do {
+    const page = await searchTeams(token, '', true, cursor);
+    teams.push(...page.data);
+    cursor = page.nextCursor ?? undefined;
+    if (cursor && cursors.has(cursor))
+      throw new Error('Cursor repetido na API.');
+    if (cursor) cursors.add(cursor);
+  } while (cursor);
+  return teams.sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'));
+}
+
+export function followTeam(
+  token: string,
+  id: string,
+): Promise<{ teamId: string; isFollowing: boolean }> {
+  return request(`/teams/${encodeURIComponent(id)}/follow`, {
+    token,
+    method: 'PUT',
+  });
+}
+
+export function unfollowTeam(token: string, id: string): Promise<void> {
+  return request(`/teams/${encodeURIComponent(id)}/follow`, {
+    token,
+    method: 'DELETE',
+  });
 }
 
 export function listOwnedTeams(token: string): Promise<Team[]> {

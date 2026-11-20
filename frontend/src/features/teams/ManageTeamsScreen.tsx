@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { useRouter } from 'expo-router';
+import { useIsFocused, useRouter } from 'expo-router';
 import { Text, View } from 'react-native';
 import { FormField } from '../../shared/components/FormInput';
 import { surfaces as styles } from '../../shared/theme/surfaces';
@@ -10,9 +10,10 @@ import { ActionButton } from '../../shared/components/ActionButton';
 import { HomeScreen } from '../home/components/HomeScreen';
 import {
   deleteTeam,
-  listOwnedTeams,
+  listMyTeams,
+  unfollowTeam,
   saveTeam,
-  type Team,
+  type TeamSummary,
   type TeamInput,
 } from './api';
 
@@ -25,21 +26,25 @@ const fields = [
 
 export function ManageTeamsScreen({ token }: { token: string }) {
   const router = useRouter();
-  const { invalidateSession, clearDeletedTeam } = useAuth();
-  const [teams, setTeams] = useState<Team[]>([]);
+  const focused = useIsFocused();
+  const { session, chooseTeam, invalidateSession, clearDeletedTeam } =
+    useAuth();
+  const [teams, setTeams] = useState<TeamSummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
   const [form, setForm] = useState<TeamInput | null>(null);
   const [editingId, setEditingId] = useState<string>();
   const [confirmDelete, setConfirmDelete] = useState<string>();
+  const [confirmUnfollow, setConfirmUnfollow] = useState<string>();
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
   const pending = useRef(false);
 
   useEffect(() => {
+    if (!focused) return;
     let active = true;
-    listOwnedTeams(token)
+    listMyTeams(token)
       .then((items) => {
         if (active) {
           setTeams(items);
@@ -57,9 +62,9 @@ export function ManageTeamsScreen({ token }: { token: string }) {
     return () => {
       active = false;
     };
-  }, [token, attempt, invalidateSession]);
+  }, [token, attempt, invalidateSession, focused]);
 
-  function edit(team?: Team) {
+  function edit(team?: TeamSummary) {
     setEditingId(team?.id);
     setForm(
       team
@@ -67,6 +72,7 @@ export function ManageTeamsScreen({ token }: { token: string }) {
         : empty,
     );
     setConfirmDelete(undefined);
+    setConfirmUnfollow(undefined);
     setNotice('');
   }
 
@@ -95,9 +101,20 @@ export function ManageTeamsScreen({ token }: { token: string }) {
           editingId,
         );
         setTeams((items) =>
-          [...items.filter((item) => item.id !== saved.id), saved].sort(
-            (a, b) => a.name.localeCompare(b.name),
-          ),
+          [
+            ...items.filter((item) => item.id !== saved.id),
+            {
+              ...saved,
+              isOwner: true,
+              isFollowing:
+                items.find((item) => item.id === saved.id)?.isFollowing ??
+                false,
+              athletesCount:
+                items.find((item) => item.id === saved.id)?.athletesCount ?? 0,
+              nextMatchAt:
+                items.find((item) => item.id === saved.id)?.nextMatchAt ?? null,
+            },
+          ].sort((a, b) => a.name.localeCompare(b.name)),
         );
         setForm(null);
         setEditingId(undefined);
@@ -119,10 +136,58 @@ export function ManageTeamsScreen({ token }: { token: string }) {
     }
   }
 
+  async function leave(team: TeamSummary) {
+    if (pending.current) return;
+    pending.current = true;
+    setBusy(true);
+    setNotice('');
+    try {
+      await unfollowTeam(token, team.id);
+      if (!team.isOwner) clearDeletedTeam(token, team.id);
+      setTeams((items) =>
+        team.isOwner
+          ? items.map((item) =>
+              item.id === team.id ? { ...item, isFollowing: false } : item,
+            )
+          : items.filter((item) => item.id !== team.id),
+      );
+      setConfirmUnfollow(undefined);
+      setNotice('Você deixou de seguir o time.');
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 401)
+        await invalidateSession(token);
+      else
+        setNotice(
+          'Não foi possível confirmar a alteração. Atualize a lista e tente novamente.',
+        );
+    } finally {
+      pending.current = false;
+      setBusy(false);
+    }
+  }
+
+  async function choose(id: string) {
+    if (pending.current) return;
+    pending.current = true;
+    setBusy(true);
+    setNotice('');
+    try {
+      await chooseTeam(id);
+      router.navigate('/agenda');
+    } catch {
+      setNotice(
+        'Não foi possível escolher este time. Atualize a lista e tente novamente.',
+      );
+    } finally {
+      pending.current = false;
+      setBusy(false);
+    }
+  }
+
   return (
     <HomeScreen
       title="Meus times"
-      description="Cadastre e gerencie as equipes que você administra."
+      description="Acesse seus times próprios e seguidos."
     >
       <ActionButton
         label="Escolher ou trocar time"
@@ -178,45 +243,101 @@ export function ManageTeamsScreen({ token }: { token: string }) {
           Não foi possível carregar seus times.
         </Text>
       ) : teams.length === 0 ? (
-        <Text style={styles.text}>Você ainda não cadastrou nenhum time.</Text>
+        <Text style={styles.text}>
+          Você ainda não tem times próprios ou seguidos.
+        </Text>
       ) : (
         teams.map((team) => (
           <View key={team.id} style={styles.card}>
             <TeamIdentity
               name={team.name}
               description={`${team.sport} · ${team.category}`}
+              current={team.id === session?.user.activeTeamId}
             />
-            {confirmDelete === team.id ? (
-              <>
-                <Text style={styles.text}>
-                  Excluir este time permanentemente? Ele também será removido
-                  dos seguidores e das seleções de agenda.
-                </Text>
+            <Text style={styles.text}>
+              {team.isOwner ? 'Criador' : 'Seguindo'}
+              {team.isOwner && team.isFollowing ? ' · Seguindo' : ''}
+            </Text>
+            <Text style={styles.text}>{team.athletesCount ?? 0} atletas</Text>
+            <ActionButton
+              label={
+                team.id === session?.user.activeTeamId
+                  ? 'Abrir agenda'
+                  : 'Escolher time'
+              }
+              primary
+              disabled={busy || !!form}
+              onPress={() => void choose(team.id)}
+            />
+            {team.isFollowing &&
+              (confirmUnfollow === team.id ? (
+                <View style={[styles.card, styles.highlighted]}>
+                  <Text style={styles.text}>
+                    {team.isOwner
+                      ? 'Deixar de seguir este time? Você continuará com acesso como criador.'
+                      : 'Deixar de seguir este time? Você perderá acesso aos jogos. Os dados do time serão preservados.'}
+                  </Text>
+                  <ActionButton
+                    label="Confirmar deixar de seguir"
+                    destructive
+                    disabled={busy}
+                    onPress={() => void leave(team)}
+                  />
+                  <ActionButton
+                    label="Cancelar"
+                    disabled={busy}
+                    onPress={() => setConfirmUnfollow(undefined)}
+                  />
+                </View>
+              ) : (
                 <ActionButton
-                  label="Confirmar exclusão"
+                  label="Deixar de seguir"
                   destructive
-                  disabled={busy}
-                  onPress={() => void submit(team.id)}
+                  disabled={busy || !!form}
+                  onPress={() => {
+                    setConfirmDelete(undefined);
+                    setConfirmUnfollow(team.id);
+                  }}
                 />
-                <ActionButton
-                  label="Cancelar exclusão"
-                  disabled={busy}
-                  onPress={() => setConfirmDelete(undefined)}
-                />
-              </>
-            ) : (
+              ))}
+            {team.isOwner && (
               <>
-                <ActionButton
-                  label="Editar"
-                  disabled={busy || !!form}
-                  onPress={() => edit(team)}
-                />
-                <ActionButton
-                  label="Excluir"
-                  destructive
-                  disabled={busy || !!form}
-                  onPress={() => setConfirmDelete(team.id)}
-                />
+                {confirmDelete === team.id ? (
+                  <>
+                    <Text style={styles.text}>
+                      Excluir este time permanentemente? Ele também será
+                      removido dos seguidores e das seleções de agenda.
+                    </Text>
+                    <ActionButton
+                      label="Confirmar exclusão"
+                      destructive
+                      disabled={busy}
+                      onPress={() => void submit(team.id)}
+                    />
+                    <ActionButton
+                      label="Cancelar exclusão"
+                      disabled={busy}
+                      onPress={() => setConfirmDelete(undefined)}
+                    />
+                  </>
+                ) : (
+                  <>
+                    <ActionButton
+                      label="Editar"
+                      disabled={busy || !!form}
+                      onPress={() => edit(team)}
+                    />
+                    <ActionButton
+                      label="Excluir"
+                      destructive
+                      disabled={busy || !!form}
+                      onPress={() => {
+                        setConfirmUnfollow(undefined);
+                        setConfirmDelete(team.id);
+                      }}
+                    />
+                  </>
+                )}
               </>
             )}
           </View>

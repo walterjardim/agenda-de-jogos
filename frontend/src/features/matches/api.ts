@@ -61,10 +61,9 @@ export async function fetchCatalog(
   teamId: string,
   token: string,
 ): Promise<Catalog> {
-  const base = teamPath(teamId);
   const [competitions, uniforms] = await Promise.all([
     fetchCompetitions(teamId, token),
-    readList<UniformPiece>(`${base}/uniforms`, token),
+    fetchUniforms(teamId, token),
   ]);
   return { competitions, uniforms };
 }
@@ -124,6 +123,10 @@ export async function fetchMessage(
   id: string,
   token: string,
   type: MessageType,
-): Promise<{ text: string; whatsappUrl: string | null }> {
+): Promise<{ type: MessageType; text: string; whatsappUrl: string | null }> {
   return request(`${matchPath(id)}/message?type=${type}`, { token });
+}
+
+export function fetchUniforms(teamId: string, token: string) {
+  return readList<UniformPiece>(`${teamPath(teamId)}/uniforms`, token);
 }

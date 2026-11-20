@@ -107,7 +107,7 @@ test('persiste competições e remove cadastros em cascata com o time', {
   const list = `/api/v1/teams/${teamId}/competitions`;
   assert.equal((await app.inject({ url: list, headers: follower })).statusCode, 404);
   assert.equal((await app.inject({
-    method: 'POST', url: `/api/v1/teams/${teamId}/select`, headers: follower,
+    method: 'PUT', url: `/api/v1/teams/${teamId}/follow`, headers: follower,
   })).statusCode, 200);
   const created = await app.inject({ method: 'POST', url: list, headers: owner, payload: { name: 'Copa' } });
   assert.equal(created.statusCode, 201);

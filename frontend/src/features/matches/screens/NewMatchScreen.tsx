@@ -167,6 +167,7 @@ function MatchForm({
                 current.id,
                 current.hasSavedCallup ? current.callups : undefined,
                 catalog.competitions,
+                catalog.uniforms,
               ),
             );
         }
@@ -380,16 +381,20 @@ function MatchEditor({
   const router = useRouter();
   const { id, token } = team;
   const loadMatch = useMatchLoader(matchId, team);
-  const { previewCompetitions } = usePreview();
+  const { previewCompetitions, previewUniforms } = usePreview();
   const load = useCallback(async () => {
     const [catalog, match] = await Promise.all([
       token
         ? fetchCatalog(id, token)
-        : { ...previewCatalog, competitions: previewCompetitions },
+        : {
+            ...previewCatalog,
+            competitions: previewCompetitions,
+            uniforms: previewUniforms,
+          },
       loadMatch(),
     ]);
     return { catalog, match };
-  }, [id, loadMatch, token, previewCompetitions]);
+  }, [id, loadMatch, token, previewCompetitions, previewUniforms]);
   const { state, retry } = useMatchResource(load);
   const data = state.status === 'ready' ? state.data : null;
   const unavailable = Boolean(matchId && data && !data.match);

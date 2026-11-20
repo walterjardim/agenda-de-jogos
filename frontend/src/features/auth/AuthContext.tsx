@@ -32,6 +32,7 @@ type Auth = {
   saveTimezone: (timezone: string) => Promise<void>;
   clearDeletedTeam: (token: string, teamId: string) => void;
   chooseTeam: (id: string) => Promise<void>;
+  refreshProfile: (token: string) => Promise<void>;
 };
 
 const AuthContext = createContext<Auth | null>(null);
@@ -84,6 +85,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [attempt, setAttempt] = useState(0);
   const activeToken = useRef<string | null>(null);
   const choosingTeam = useRef(false);
+  const profileRevision = useRef(0);
 
   useEffect(() => {
     let active = true;
@@ -185,10 +187,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!session || choosingTeam.current)
       throw new Error('Seleção indisponível.');
     choosingTeam.current = true;
+    const revision = ++profileRevision.current;
     try {
       const user = await selectTeam(session.sessionToken, id);
-      if (activeToken.current !== session.sessionToken)
-        throw new Error('Sessão alterada.');
+      if (
+        activeToken.current !== session.sessionToken ||
+        revision !== profileRevision.current
+      )
+        throw new Error('Seleção ou sessão alterada.');
       setSession((current) =>
         current?.sessionToken === session.sessionToken
           ? {
@@ -206,6 +212,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const refreshProfile = useCallback(
+    async (token: string) => {
+      const revision = profileRevision.current;
+      try {
+        const user = await getProfile(token);
+        setSession((current) =>
+          current?.sessionToken === token &&
+          profileRevision.current === revision &&
+          current.user.activeTeamId !== user.activeTeamId
+            ? {
+                ...current,
+                user: { ...current.user, activeTeamId: user.activeTeamId },
+              }
+            : current,
+        );
+      } catch (error) {
+        if (error instanceof ApiError && error.status === 401)
+          await endSession(token);
+        throw error;
+      }
+    },
+    [endSession],
+  );
+
   return (
     <AuthContext.Provider
       value={{
@@ -218,7 +248,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         signOut,
         saveTimezone,
         chooseTeam,
+        refreshProfile,
         clearDeletedTeam: (token, teamId) => {
+          profileRevision.current += 1;
           setSession((current) =>
             current?.sessionToken === token &&
             current.user.activeTeamId === teamId

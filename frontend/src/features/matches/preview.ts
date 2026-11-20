@@ -30,6 +30,7 @@ export const previewCatalog: Catalog = {
       id: 'camisa-casa',
       pieceType: 'shirt',
       uniformName: 'Casa',
+      colorHex: '#1E40AF',
       description: 'Azul',
       isHomeDefault: true,
       isAwayDefault: false,
@@ -38,6 +39,7 @@ export const previewCatalog: Catalog = {
       id: 'calcao-fora',
       pieceType: 'shorts',
       uniformName: 'Fora',
+      colorHex: '#FFFFFF',
       description: 'Branco',
       isHomeDefault: false,
       isAwayDefault: true,
@@ -46,6 +48,7 @@ export const previewCatalog: Catalog = {
       id: 'meiao-casa',
       pieceType: 'socks',
       uniformName: 'Casa',
+      colorHex: '#1E40AF',
       description: 'Azul',
       isHomeDefault: true,
       isAwayDefault: false,
@@ -82,9 +85,8 @@ export function previewMatch(
   id: string,
   savedCallups?: Callup[],
   competitions = previewCatalog.competitions,
+  uniforms = previewCatalog.uniforms,
 ): MatchDetail {
-  const { uniforms } = previewCatalog;
-
   function resolvePiece(
     type: PieceType,
     selectedId: string | null | undefined,
@@ -114,6 +116,16 @@ export function previewMatch(
   };
 }
 
+function messageTime(instant: string, timezone: string) {
+  const weekday = new Intl.DateTimeFormat('pt-BR', {
+    weekday: 'short',
+    timeZone: timezone,
+  })
+    .format(new Date(instant))
+    .replace('.', '');
+  return `${weekday.charAt(0).toUpperCase()}${weekday.slice(1)}, ${formatGameTime(instant, timezone).replace(' · ', ' às ')}`;
+}
+
 export function previewMessage(
   match: MatchDetail,
   timezone: string,
@@ -125,11 +137,9 @@ export function previewMessage(
     `⚽ ${previewTeam.name} (${previewTeam.category}) x ${match.opponent}`,
   ];
   if (match.competition) lines.push(`🏆 Competição: ${match.competition.name}`);
+  lines.push(`📅 Jogo: ${messageTime(match.startsAt, timezone)}`);
   lines.push(
-    `📅 Jogo: ${formatGameTime(match.startsAt, timezone).replace(' · ', ' às ')}`,
-  );
-  lines.push(
-    `⏰ Chegada dos atletas: ${formatGameTime(match.arrivalAt, timezone).replace(' · ', ' às ')}`,
+    `⏰ Chegada dos atletas: ${messageTime(match.arrivalAt, timezone)}`,
   );
   if (match.location) lines.push(`📍 ${match.location}`);
 
@@ -144,7 +154,7 @@ export function previewMessage(
 
   if (match.refereeFeeCents !== null) {
     lines.push(
-      `💰 Taxa de arbitragem: ${formatFee(match.refereeFeeCents)} por atleta`,
+      `💰 Taxa de arbitragem: ${formatFee(match.refereeFeeCents).replace(/\u00a0/g, ' ')} por atleta`,
     );
   }
   if (match.notes?.trim()) lines.push('📝 Observações:', match.notes);
@@ -152,10 +162,12 @@ export function previewMessage(
     lines.push(
       '',
       'Convocados:',
-      ...match.callups.map(
-        ({ shirtNumber, name, position }) =>
-          `${shirtNumber} - ${name} (${position})`,
-      ),
+      ...[...match.callups]
+        .sort((a, b) => a.shirtNumber - b.shirtNumber)
+        .map(
+          ({ shirtNumber, name, position }) =>
+            `${shirtNumber} - ${name} (${position})`,
+        ),
     );
   }
   return lines.join('\n');

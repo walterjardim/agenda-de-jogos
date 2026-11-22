@@ -46,7 +46,22 @@ tar -C "$origem" --exclude=node_modules --exclude=.git --exclude=.gradle \
 
 cd -- "$destino"
 npm ci
-bash android/gradlew -p android :app:assembleRelease -PreactNativeArchitectures=arm64-v8a
+
+gradle_log=$(mktemp)
+trap 'rm -f -- "$gradle_log"' EXIT
+gradle_args=(-p android :app:assembleRelease -PreactNativeArchitectures=arm64-v8a --console=plain)
+
+if bash android/gradlew "${gradle_args[@]}" 2>&1 | tee "$gradle_log"; then
+    :
+else
+    gradle_status=$?
+    if ! grep -Eq 'foojay-resolver-convention.*was not found|could not resolve plugin artifact.*foojay-resolver-convention' "$gradle_log"; then
+        exit "$gradle_status"
+    fi
+    printf 'O Gradle não conseguiu resolver o plugin Foojay. Tentando novamente em 15 segundos.\n' >&2
+    sleep 15
+    bash android/gradlew "${gradle_args[@]}" --refresh-dependencies
+fi
 
 apk="$destino/android/app/build/outputs/apk/release/app-release.apk"
 if [[ ! -f "$apk" ]]; then

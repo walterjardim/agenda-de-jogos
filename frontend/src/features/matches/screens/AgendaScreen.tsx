@@ -1,5 +1,6 @@
 import { Temporal } from '@js-temporal/polyfill';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useLocalSearchParams, useNavigation, useRouter } from 'expo-router';
+import type { BottomTabNavigationProp } from 'expo-router/js-tabs';
 import {
   type ComponentRef,
   useCallback,
@@ -211,21 +212,33 @@ function parseAgendaDay(day?: string) {
 
 function WeeklyAgenda({ id, timezone, token }: AgendaTeam) {
   const router = useRouter();
+  const navigation =
+    useNavigation<BottomTabNavigationProp<{ agenda: undefined }>>();
+
   const today = useLocalDay(timezone);
   const { dia, jogo } = useLocalSearchParams<{ dia?: string; jogo?: string }>();
   const routeKey = `${dia ?? ''}:${jogo ?? ''}`;
-  const [selection, setSelection] = useState<{
-    anchor: string;
-    day: string | null;
-    routeKey: string;
-  }>();
+  const [selection, setSelection] = useState<
+    | { routeKey: string; mode: 'today' }
+    | { routeKey: string; mode: 'calendar'; anchor: string; day: string | null }
+  >();
   const routeDay = parseAgendaDay(dia) ?? today;
   const current = selection?.routeKey === routeKey ? selection : undefined;
-  const anchor = current?.anchor ?? routeDay;
-  const selectedDay = current ? current.day : routeDay;
+  const anchor =
+    current?.mode === 'calendar' ? current.anchor : current ? today : routeDay;
+  const selectedDay = current?.mode === 'calendar' ? current.day : anchor;
+
+  const showToday = useCallback(() => {
+    setSelection({ routeKey, mode: 'today' });
+  }, [routeKey]);
+
+  useEffect(
+    () => navigation.addListener('tabPress', showToday),
+    [navigation, showToday],
+  );
 
   function show(anchor: string, day: string | null) {
-    setSelection({ anchor, day, routeKey });
+    setSelection({ anchor, day, routeKey, mode: 'calendar' });
   }
 
   function moveWeek(weeks: number) {
@@ -281,7 +294,7 @@ function WeeklyAgenda({ id, timezone, token }: AgendaTeam) {
     >
       <View style={styles.row}>
         <ActionButton label="Semana anterior" onPress={() => moveWeek(-1)} />
-        <ActionButton label="Hoje" onPress={() => show(today, today)} />
+        <ActionButton label="Hoje" onPress={showToday} />
         <ActionButton label="Próxima semana" onPress={() => moveWeek(1)} />
       </View>
       <WeekCalendar
@@ -337,7 +350,7 @@ function WeeklyAgenda({ id, timezone, token }: AgendaTeam) {
         ))}
       </View>
       <HomeMenu>
-        {(!token || selectedTeam) && (
+        {selectedTeam?.isOwner && (
           <HomeMenuItem
             icon="add"
             label="Novo jogo"
@@ -354,11 +367,13 @@ function WeeklyAgenda({ id, timezone, token }: AgendaTeam) {
         />
         {selectedTeam && (
           <>
-            <HomeMenuItem
-              icon="teams"
-              label="Elenco"
-              onPress={() => router.push('/elenco')}
-            />
+            {selectedTeam.isOwner && (
+              <HomeMenuItem
+                icon="teams"
+                label="Elenco"
+                onPress={() => router.push('/elenco')}
+              />
+            )}
             <HomeMenuItem
               icon="uniform"
               label="Uniformes"

@@ -75,7 +75,7 @@ test('o cursor da API retoma a consulta pelo número da camisa, inclusive zero',
       findUnique: async (args: Parameters<PrismaClient['team']['findUnique']>[0]) => {
         assert.deepEqual(args.where, {
           id: teamId,
-          OR: [{ userId }, { followers: { some: { userId } } }],
+          userId,
         });
         const query = args.select?.athletes;
         assert.ok(query && typeof query === 'object');
@@ -155,11 +155,12 @@ test('persiste elenco, isola permissões e mantém paginação após excluir o c
   assert.equal((await create(`${anotherTeam}/athletes`, 0)).statusCode, 201);
 
   assert.equal((await app.inject({ method: 'PUT', url: `${team}/follow`, headers: other })).statusCode, 200);
-  const first = (await app.inject({ url: `${url}?limit=1`, headers: other })).json();
+  assert.equal((await app.inject({ url, headers: other })).statusCode, 404);
+  const first = (await app.inject({ url: `${url}?limit=1`, headers: owner })).json();
   const item = `/api/v1/athletes/${first.data[0].id}`;
   assert.equal(first.data[0].shirtNumber, 0);
   assert.ok(first.nextCursor);
-  const filtered = await app.inject({ url: `${url}?status=active&q=JO%C3%83O`, headers: other });
+  const filtered = await app.inject({ url: `${url}?status=active&q=JO%C3%83O`, headers: owner });
   assert.deepEqual(filtered.json(), { data: first.data, nextCursor: null });
   assert.equal((await app.inject({ method: 'POST', url, headers: other, payload: input })).statusCode, 403);
   assert.equal((await app.inject({ method: 'PATCH', url: item, headers: other, payload: { status: 'injured' } })).statusCode, 403);

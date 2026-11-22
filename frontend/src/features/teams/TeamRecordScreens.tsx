@@ -1,9 +1,9 @@
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { Text, TextInput, View } from 'react-native';
+import { Text, View } from 'react-native';
 import { TableActions } from '../../shared/components/TableActions';
 import { tableStyles as rosterStyles } from '../../shared/theme/table';
-import { FormField } from '../../shared/components/FormInput';
+import { FormField, type InputRef } from '../../shared/components/FormInput';
 import { ApiError } from '../auth/api';
 import { useAuth } from '../auth/AuthContext';
 import { ActionButton } from '../../shared/components/ActionButton';
@@ -346,9 +346,9 @@ function Editor({
     field: 'name' | 'position' | 'shirt';
     message: string;
   }>();
-  const nameRef = useRef<TextInput>(null);
-  const positionRef = useRef<TextInput>(null);
-  const shirtRef = useRef<TextInput>(null);
+  const nameRef = useRef<InputRef>(null);
+  const positionRef = useRef<InputRef>(null);
+  const shirtRef = useRef<InputRef>(null);
   function invalid(field: 'name' | 'position' | 'shirt', message: string) {
     setError('');
     setFieldError({ field, message });

@@ -322,10 +322,12 @@ test(
       ).statusCode,
       200,
     );
+    const payload = { opponent: "Rival", startsAt: "2026-12-01T12:00:00Z" };
+    assert.equal((await app.inject({ method: "POST", url: matchesUrl, headers: follower.headers, payload })).statusCode, 404);
     const created = await app.inject({
       method: "POST",
       url: matchesUrl,
-      headers: follower.headers,
+      headers: owner.headers,
       payload: { opponent: "Rival", startsAt: "2026-12-01T12:00:00Z" },
     });
     assert.equal(created.statusCode, 201, created.body);
@@ -438,7 +440,7 @@ test(
     ]);
     assert.ok([200, 404].includes(race[0]!.statusCode));
     assert.equal(race[1]!.statusCode, 204);
-    assert.ok([201, 404].includes(race[2]!.statusCode));
+    assert.equal(race[2]!.statusCode, 404);
     assert.equal(
       (await db.user.findUniqueOrThrow({ where: { id: follower.user.id } }))
         .activeTeamId,

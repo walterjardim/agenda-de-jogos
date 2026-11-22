@@ -2,6 +2,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { createAuthService } from "../auth/service.js";
 import type { PrismaClient } from "../generated/prisma/client.js";
+import { createAccountRateLimit } from "../http/accountRateLimit.js";
 import { ApiError, parseBody } from "../http/errors.js";
 
 const teamBody = z.strictObject({
@@ -121,8 +122,10 @@ export async function teamRoutes(
     return { data, nextCursor: rows.length > limit ? data.at(-1)!.id : null };
   });
 
-  app.get("/teams/search", async (request) => {
+  const limitSearch = createAccountRateLimit(app, 40);
+  app.get("/teams/search", async (request, reply) => {
     const { user } = await auth.requireSession(request.headers.authorization);
+    await limitSearch(request, reply, user.id);
     const { q, limit, cursor } = parseBody(discoveryQuery, request.query);
     const name = q.replace(/[\\%_]/g, "\\$&");
     const rows = await db.team.findMany({

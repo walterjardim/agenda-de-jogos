@@ -28,6 +28,7 @@ const envSchema = z.object({
         }),
       ),
     ),
+  WEB_SESSION_ORIGIN: z.url({ protocol: /^https$/ }).refine((value) => new URL(value).origin === value).optional(),
   HOST: z.string().trim().min(1).default('127.0.0.1'),
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   SESSION_TTL_HOURS: z.coerce.number().int().min(1).max(720).default(168),

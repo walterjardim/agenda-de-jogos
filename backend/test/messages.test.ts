@@ -207,11 +207,14 @@ test("rota exige sessão e vínculo, valida tipo e usa o fuso atual do perfil", 
     },
     match: {
       findUnique: async (args: any) => {
-        assert.deepEqual(args.where, {
-          id,
-          team: { OR: [{ userId }, { followers: { some: { userId } } }] },
-        });
-        assert.deepEqual(args.select, messageSelect);
+        assert.equal(args.where.id, id);
+        if ('userId' in args.where.team) {
+          assert.deepEqual(args.where.team, { userId });
+          assert.deepEqual(args.select, messageSelect);
+        } else {
+          assert.deepEqual(args.where.team, { OR: [{ userId }, { followers: { some: { userId } } }] });
+          assert.deepEqual(args.select.callups.where, { match: { team: { userId } } });
+        }
         assert.deepEqual(args.select.callups.orderBy, {
           athlete: { shirtNumber: "asc" },
         });
@@ -359,7 +362,11 @@ test(
       (await app.inject({ url, headers: outsider.headers })).statusCode,
       404,
     );
-    const response = await app.inject({ url, headers: follower.headers });
+    assert.equal((await app.inject({ url, headers: follower.headers })).statusCode, 404);
+    const sheet = await app.inject({ url: `${url}?type=sheet`, headers: follower.headers });
+    assert.equal(sheet.statusCode, 200);
+    assert.doesNotMatch(sheet.json().text, /Atleta [19]/);
+    const response = await app.inject({ url, headers: owner.headers });
     assert.equal(response.statusCode, 200, response.body);
     assert.ok(
       response.json().text.indexOf("1 - Atleta 1") <

@@ -1,16 +1,15 @@
-import { Tabs } from 'expo-router';
+import { Tabs } from 'expo-router/js-tabs';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
-import { useAgendaTeam } from '../../features/matches/hooks';
 import { TabIcon } from '../../features/home/components/TabIcon';
 import { theme } from '../../shared/theme/theme';
 
+export const unstable_settings = { initialRouteName: 'agenda' };
+
 export default function HomeLayout() {
   const { bottom } = useSafeAreaInsets();
-  const hasActiveTeam = Boolean(useAgendaTeam());
 
   return (
     <Tabs
-      initialRouteName={hasActiveTeam ? 'agenda' : 'buscar'}
       screenOptions={{
         headerShown: false,
         tabBarActiveTintColor: theme.colors.accent,

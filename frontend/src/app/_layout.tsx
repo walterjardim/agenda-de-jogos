@@ -34,6 +34,7 @@ function Navigation() {
   return (
     <PreviewContext.Provider
       value={{
+        previewOpen: __DEV__ && previewOpen,
         openPreview: () => setPreviewOpen(true),
         closePreview,
         followingAjax,
@@ -47,9 +48,7 @@ function Navigation() {
       }}
     >
       <Stack screenOptions={{ headerShown: false }}>
-        <Stack.Protected guard={!canOpenHome}>
-          <Stack.Screen name="index" />
-        </Stack.Protected>
+        <Stack.Screen name="index" />
         <Stack.Protected guard={canOpenHome}>
           <Stack.Screen name="(home)" />
           <Stack.Screen name="trocar-time" />

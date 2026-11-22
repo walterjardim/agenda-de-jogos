@@ -14,7 +14,7 @@ import { theme } from '../../../shared/theme/theme';
 import { ApiError } from '../../auth/api';
 import { ActionButton } from '../../../shared/components/ActionButton';
 import { HomeScreen } from '../../home/components/HomeScreen';
-import { fetchMessage } from '../api';
+import { fetchMessage, fetchTeam } from '../api';
 import {
   LoadingMatches,
   MatchLoadError,
@@ -28,6 +28,12 @@ import {
 } from '../hooks';
 import { type MessageType } from '../model';
 import { previewMessage } from '../preview';
+
+function whatsappLink(text: string) {
+  return Array.from(text).length <= 2000
+    ? `https://wa.me/?text=${encodeURIComponent(text)}`
+    : null;
+}
 
 function Message({
   text,
@@ -109,24 +115,34 @@ function ShareMatch({
   initialType: MessageType;
 }) {
   const router = useRouter();
-  const [type, setType] = useState(initialType);
+  const [requestedType, setType] = useState(initialType);
   const loadMatch = useMatchLoader(id, team);
   const { token, timezone } = team;
+  const loadPermissions = useCallback(
+    async () =>
+      token ? (await fetchTeam(team.id, token)).isOwner === true : true,
+    [team.id, token],
+  );
+  const permissions = useMatchResource(loadPermissions);
+  const canShareCallup =
+    !token || (permissions.state.status === 'ready' && permissions.state.data);
+  const type = canShareCallup ? requestedType : 'sheet';
   const load = useCallback(async () => {
     const match = await loadMatch();
     if (!match) return null;
     if (token) {
       const message = await fetchMessage(id, token, type);
-      return { type, text: message.text, whatsappUrl: message.whatsappUrl };
+      return {
+        type,
+        text: message.text,
+        whatsappUrl: whatsappLink(message.text),
+      };
     }
     const text = previewMessage(match, timezone, type);
     return {
       type,
       text,
-      whatsappUrl:
-        Array.from(text).length <= 2000
-          ? `https://wa.me/?text=${encodeURIComponent(text)}`
-          : null,
+      whatsappUrl: whatsappLink(text),
     };
   }, [id, loadMatch, timezone, token, type]);
   const { state, retry } = useMatchResource(load);
@@ -144,40 +160,42 @@ function ShareMatch({
         router.dismissTo({ pathname: '/jogo/[id]', params: { id } })
       }
     >
-      <View
-        accessibilityRole="radiogroup"
-        accessibilityLabel="Tipo de mensagem"
-        style={shareStyles.segments}
-      >
-        {(
-          [
-            ['sheet', 'Ficha'],
-            ['callup', 'Convocação'],
-          ] as const
-        ).map(([value, label]) => (
-          <Pressable
-            key={value}
-            accessibilityRole="radio"
-            aria-checked={type === value}
-            accessibilityState={{ checked: type === value }}
-            onPress={() => setType(value)}
-            style={({ pressed }) => [
-              shareStyles.option,
-              type === value && shareStyles.active,
-              pressed && shareStyles.pressed,
-            ]}
-          >
-            <Text
-              style={[
-                shareStyles.label,
-                type === value && shareStyles.activeLabel,
+      {canShareCallup && (
+        <View
+          accessibilityRole="radiogroup"
+          accessibilityLabel="Tipo de mensagem"
+          style={shareStyles.segments}
+        >
+          {(
+            [
+              ['sheet', 'Ficha'],
+              ['callup', 'Convocação'],
+            ] as const
+          ).map(([value, label]) => (
+            <Pressable
+              key={value}
+              accessibilityRole="radio"
+              aria-checked={type === value}
+              accessibilityState={{ checked: type === value }}
+              onPress={() => setType(value)}
+              style={({ pressed }) => [
+                shareStyles.option,
+                type === value && shareStyles.active,
+                pressed && shareStyles.pressed,
               ]}
             >
-              {label}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+              <Text
+                style={[
+                  shareStyles.label,
+                  type === value && shareStyles.activeLabel,
+                ]}
+              >
+                {label}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+      )}
       {state.status === 'loading' && <LoadingMatches />}
       {state.status === 'error' && !emptyCallup && (
         <MatchLoadError error={state.error} retry={retry} />

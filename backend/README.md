@@ -131,8 +131,8 @@ perfil e volta à escolha quando o time ativo tiver sido limpo.
 | `PATCH /api/v1/athletes/:id` | Um ou mais campos do cadastro | Atleta atualizado |
 | `DELETE /api/v1/athletes/:id` | ID do atleta | `204` |
 
-O criador do time pode cadastrar, editar e excluir atletas. Seguidores podem
-consultar o elenco. Alterações solicitadas por seguidores retornam `403`.
+Somente o criador pode consultar e gerenciar o elenco. A consulta por seguidores
+retorna `404` e tentativas de alterar o elenco retornam `403`.
 Recursos inexistentes ou de equipes sem vínculo retornam `404`. A camisa é
 um inteiro de 0 a 999 e precisa ser única no time. Números em uso retornam
 `409 CONFLICT`. O nome aceita de 1 a 80 caracteres, a posição é obrigatória
@@ -174,8 +174,8 @@ vem em ordem de início e ID, com limite de até 50 registros e resposta
 `{ data, nextCursor }`. Use `upcoming=true` apenas para filtrar jogos
 que ainda não começaram.
 
-Criadores e seguidores podem listar, cadastrar, consultar, editar e excluir
-jogos do time. Para abrir a ficha, use `GET /api/v1/matches/:id`.
+Criadores e seguidores podem listar e consultar jogos do time. Somente o
+criador pode cadastrar, editar e excluir jogos. Para abrir a ficha, use `GET /api/v1/matches/:id`.
 `arrivalAt` é sempre calculado como uma hora antes de `startsAt`.
 Execute `npm run db:migrate` no ambiente do backend para habilitar as
 rotas com a tabela de jogos.
@@ -183,8 +183,8 @@ rotas com a tabela de jogos.
 ### Salvamento de convocações
 
 `PUT /api/v1/matches/:id/callups` recebe `{ "athleteIds": ["<UUID>"] }`
-com a lista completa de convocados e exige sessão do criador ou de um seguidor
-da equipe. A resposta inclui `matchId`, `hasSavedCallup`, `callups` em ordem
+com a lista completa de convocados e exige sessão do criador da equipe.
+A resposta inclui `matchId`, `hasSavedCallup`, `callups` em ordem
 de camisa, `count`, `warnings` e `estimatedRefereeTotalCents`.
 
 A lista vazia é válida e salva `hasSavedCallup: true`. O detalhe do jogo
@@ -202,7 +202,8 @@ As tabelas e o indicador usam a migration existente de jogos.
 
 `GET /api/v1/matches/:id/message?type=sheet` gera a ficha do jogo.
 `type=callup` gera a convocação e é o padrão quando o parâmetro é omitido.
-Criador e seguidores podem consultar. A resposta contém `type`, `text` e
+Criador e seguidores podem consultar a ficha de compartilhamento. A
+convocação com nomes é exclusiva do criador. A resposta contém `type`, `text` e
 `whatsappUrl`. A convocação exige ao menos um atleta e retorna `422` quando
 vazia; a ficha pode ser gerada sem convocados.
 
@@ -226,3 +227,19 @@ Os testes usam JWTs assinados localmente e fornecem uma chave pública de teste
 à biblioteca do Google. Para executar também os testes de persistência,
 configure `TEST_DATABASE_URL` com um PostgreSQL **de teste** que já recebeu a
 migration. Os testes de persistência criam e removem seus próprios registros.
+
+### Sessões web e proteção da API
+
+Para persistir a sessão web, sirva a API e o site na mesma origem HTTPS.
+Defina `WEB_SESSION_ORIGIN` no backend com essa origem, sem barra final,
+e compile o frontend com `EXPO_PUBLIC_WEB_COOKIE_SESSION=true`. O cookie
+é restrito ao host, usa `Secure`, `HttpOnly` e `SameSite=Strict`, e a API
+verifica a origem em requisições de escrita por cookie. A sessão via cookie
+dura até 8 horas. Em hospedagem separada, a sessão web dura até uma hora e
+fica em memória. Uma recarga exige novo login. Android e iOS continuam
+usando o armazenamento seguro do dispositivo.
+
+A API limita tráfego por IP do cliente direto e aplica limites adicionais
+por conta na busca e nas alterações de jogos e convocações. Em produção
+com proxy ou múltiplas instâncias, configure no gateway limites distribuídos
+e controle de IP conforme a topologia do ambiente.

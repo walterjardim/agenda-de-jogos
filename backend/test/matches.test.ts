@@ -118,15 +118,18 @@ test("agenda filtra o dia no fuso do perfil, pagina empates e exige vínculo", a
   assert.equal(dst.statusCode, 200);
 });
 
-test("repetir um cadastro devolve a mesma partida enquanto o usuário tem acesso", async (t) => {
+test("repetir um cadastro devolve a mesma partida enquanto o usuário é responsável", async (t) => {
   let accessible = true;
   let insertions = 0;
   const stored = new Map<string, { id: string; startsAt: Date; _count: { callups: number } }>();
   const db = {
     authSession: { findUnique: async () => ({ user: { id: userId } }) },
     $transaction: async (run: (tx: unknown) => Promise<unknown>) => run({
-      $queryRaw: async () => [{ id: teamId }],
-      team: { findUnique: async () => accessible ? { id: teamId } : null },
+      $queryRaw: async (query: TemplateStringsArray, ...values: string[]) => {
+        assert.match(query.join('?'), /WHERE id = \?::uuid AND user_id = \?::uuid/);
+        assert.deepEqual(values, [teamId, userId]);
+        return accessible ? [{ id: teamId }] : [];
+      },
       match: {
         findFirst: async ({ where }: { where: { teamId: string; createKey: string } }) => {
           assert.equal(where.teamId, teamId);
@@ -177,4 +180,55 @@ test("repetir um cadastro devolve a mesma partida enquanto o usuário tem acesso
 
   accessible = false;
   assert.equal((await create("first-attempt")).statusCode, 404);
+});
+
+test("seguidor lê a ficha sem dados do elenco e não grava na agenda", async (t) => {
+  const authorized = { OR: [{ userId }, { followers: { some: { userId } } }] };
+  const db = {
+    authSession: { findUnique: async () => ({ user: { id: userId } }) },
+    match: {
+      findUnique: async (args: {
+        where: { id: string; team: unknown };
+        include?: { callups?: { where: unknown } };
+        select?: unknown;
+      }) => {
+        assert.equal(args.where.id, firstId);
+        if (args.select) {
+          assert.deepEqual(args.where.team, { userId });
+          return null;
+        }
+        assert.deepEqual(args.where.team, authorized);
+        assert.deepEqual(args.include?.callups?.where, { match: { team: { userId } } });
+        return {
+          id: firstId, startsAt, teamId, hasSavedCallup: true,
+          callups: [], _count: { callups: 1 },
+          refereeFeeCents: null,
+        };
+      },
+    },
+    $transaction: async (run: (tx: unknown) => Promise<unknown>) => run({
+      match: {
+        findUnique: async ({ where }: { where: { id: string; team: unknown } }) => {
+          assert.deepEqual(where, { id: firstId, team: { userId } });
+          return null;
+        },
+      },
+    }),
+  };
+  const app = buildApp({
+    db: db as unknown as PrismaClient,
+    sessionTtlHours: 1,
+    verifyGoogleIdentity: async () => { throw new Error("unused"); },
+  });
+  t.after(() => app.close());
+  const url = `/api/v1/matches/${firstId}`;
+  const headers = { authorization: `Bearer ${"a".repeat(43)}` };
+  const response = await app.inject({ url, headers });
+  assert.equal(response.statusCode, 200);
+  assert.deepEqual(response.json().callups, []);
+  assert.equal(response.json().callupsCount, 1);
+  assert.equal((await app.inject({ url: `${url}/message?type=callup`, headers })).statusCode, 404);
+  assert.equal((await app.inject({ method: "PATCH", url, headers, payload: { opponent: "Rival" } })).statusCode, 404);
+  assert.equal((await app.inject({ method: "DELETE", url, headers })).statusCode, 404);
+  assert.equal((await app.inject({ method: "PUT", url: `${url}/callups`, headers, payload: { athleteIds: [] } })).statusCode, 404);
 });

@@ -172,83 +172,92 @@ function MatchSheet({ id, team }: { id: string; team: AgendaTeam }) {
                 })
               }
             />
-            <ActionButton
-              icon="teams"
-              label="Selecionar atletas"
-              disabled={confirming}
-              onPress={() =>
-                router.push({ pathname: '/convocacao/[id]', params: { id } })
-              }
-            />
+            {data.selectedTeam.isOwner && (
+              <ActionButton
+                icon="teams"
+                label="Selecionar atletas"
+                disabled={confirming}
+                onPress={() =>
+                  router.push({ pathname: '/convocacao/[id]', params: { id } })
+                }
+              />
+            )}
           </View>
-          <View style={styles.row}>
-            <ActionButton
-              icon="edit"
-              label="Editar jogo"
-              disabled={confirming}
-              onPress={() =>
-                router.push({ pathname: '/editar-jogo/[id]', params: { id } })
-              }
-            />
-            <ActionButton
-              ref={deleteButton}
-              icon="remove"
-              label="Excluir jogo"
-              destructive
-              onPress={() => setConfirming(true)}
-            />
-          </View>
-          <Modal
-            transparent
-            visible={confirming}
-            onRequestClose={cancelDeletion}
-            onShow={() => focusButton(cancelButton.current)}
-            onDismiss={() => focusButton(deleteButton.current)}
-            aria-labelledby="delete-match-title"
-          >
-            <ScrollView contentContainerStyle={dialogStyles.overlay}>
-              <View
-                accessibilityViewIsModal
-                style={[surfaces.card, dialogStyles.card]}
-              >
-                <Text
-                  nativeID="delete-match-title"
-                  accessibilityRole="header"
-                  style={styles.title}
-                >
-                  Excluir jogo?
-                </Text>
-                <Text style={styles.text}>
-                  O jogo e sua convocação serão removidos da agenda para todas
-                  as pessoas que acompanham o time.
-                </Text>
-                {Boolean(error) && (
-                  <Text
-                    accessibilityLiveRegion="polite"
-                    aria-live="polite"
-                    style={styles.error}
-                  >
-                    {error}
-                  </Text>
-                )}
-                <View style={styles.row}>
-                  <ActionButton
-                    ref={cancelButton}
-                    label="Cancelar"
-                    disabled={deleting}
-                    onPress={cancelDeletion}
-                  />
-                  <ActionButton
-                    icon="remove"
-                    label={deleting ? 'Excluindo…' : 'Excluir jogo'}
-                    destructive
-                    disabled={deleting}
-                    onPress={() => void remove()}
-                  />
-                </View>
+          {data.selectedTeam.isOwner && (
+            <>
+              <View style={styles.row}>
+                <ActionButton
+                  icon="edit"
+                  label="Editar jogo"
+                  disabled={confirming}
+                  onPress={() =>
+                    router.push({
+                      pathname: '/editar-jogo/[id]',
+                      params: { id },
+                    })
+                  }
+                />
+                <ActionButton
+                  ref={deleteButton}
+                  icon="remove"
+                  label="Excluir jogo"
+                  destructive
+                  onPress={() => setConfirming(true)}
+                />
               </View>
-            </ScrollView>
-          </Modal>
+              <Modal
+                transparent
+                visible={confirming}
+                onRequestClose={cancelDeletion}
+                onShow={() => focusButton(cancelButton.current)}
+                onDismiss={() => focusButton(deleteButton.current)}
+                aria-labelledby="delete-match-title"
+              >
+                <ScrollView contentContainerStyle={dialogStyles.overlay}>
+                  <View
+                    accessibilityViewIsModal
+                    style={[surfaces.card, dialogStyles.card]}
+                  >
+                    <Text
+                      nativeID="delete-match-title"
+                      accessibilityRole="header"
+                      style={styles.title}
+                    >
+                      Excluir jogo?
+                    </Text>
+                    <Text style={styles.text}>
+                      O jogo e sua convocação serão removidos da agenda para
+                      todas as pessoas que acompanham o time.
+                    </Text>
+                    {Boolean(error) && (
+                      <Text
+                        accessibilityLiveRegion="polite"
+                        aria-live="polite"
+                        style={styles.error}
+                      >
+                        {error}
+                      </Text>
+                    )}
+                    <View style={styles.row}>
+                      <ActionButton
+                        ref={cancelButton}
+                        label="Cancelar"
+                        disabled={deleting}
+                        onPress={cancelDeletion}
+                      />
+                      <ActionButton
+                        icon="remove"
+                        label={deleting ? 'Excluindo…' : 'Excluir jogo'}
+                        destructive
+                        disabled={deleting}
+                        onPress={() => void remove()}
+                      />
+                    </View>
+                  </View>
+                </ScrollView>
+              </Modal>
+            </>
+          )}
         </>
       )}
     </HomeScreen>

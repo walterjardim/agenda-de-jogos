@@ -81,7 +81,7 @@ export async function athleteRoutes(
     const team = await db.team.findUnique({
       where: {
         id: teamId,
-        OR: [{ userId: user.id }, { followers: { some: { userId: user.id } } }],
+        userId: user.id,
       },
       select: {
         athletes: {

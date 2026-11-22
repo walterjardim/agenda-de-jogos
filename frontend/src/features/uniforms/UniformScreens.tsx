@@ -1,17 +1,10 @@
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import {
-  Pressable,
-  StyleSheet,
-  Switch,
-  Text,
-  TextInput,
-  View,
-} from 'react-native';
+import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
 import { ActionButton } from '../../shared/components/ActionButton';
 import { TableActions } from '../../shared/components/TableActions';
 import { tableStyles } from '../../shared/theme/table';
-import { FormField } from '../../shared/components/FormInput';
+import { FormField, type InputRef } from '../../shared/components/FormInput';
 import { theme } from '../../shared/theme/theme';
 import { ApiError } from '../auth/api';
 import { useAuth } from '../auth/AuthContext';
@@ -307,9 +300,9 @@ function UniformForm({
     field: 'uniformName' | 'description' | 'colorHex';
     message: string;
   }>();
-  const uniformNameRef = useRef<TextInput>(null);
-  const descriptionRef = useRef<TextInput>(null);
-  const colorHexRef = useRef<TextInput>(null);
+  const uniformNameRef = useRef<InputRef>(null);
+  const descriptionRef = useRef<InputRef>(null);
+  const colorHexRef = useRef<InputRef>(null);
   const pending = useRef(false);
   function change<K extends keyof UniformInput>(
     key: K,

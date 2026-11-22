@@ -1,14 +1,14 @@
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { Text, TextInput, View } from 'react-native';
-import { FormField } from '../../../shared/components/FormInput';
+import { Text, View } from 'react-native';
+import { FormField, type InputRef } from '../../../shared/components/FormInput';
 import { ApiError } from '../../auth/api';
 import { useDiscardChanges } from '../../../shared/components/useDiscardChanges';
 import { useAuth } from '../../auth/AuthContext';
 import { ActionButton } from '../../../shared/components/ActionButton';
 import { HomeScreen } from '../../home/components/HomeScreen';
 import { usePreview } from '../../home/PreviewContext';
-import { createMatch, fetchCatalog, updateMatch } from '../api';
+import { createMatch, fetchCatalog, fetchTeam, updateMatch } from '../api';
 import {
   LoadingMatches,
   MatchLoadError,
@@ -96,10 +96,10 @@ function MatchForm({
     field: 'opponent' | 'date' | 'time' | 'fee';
     message: string;
   }>();
-  const opponentRef = useRef<TextInput>(null);
-  const dateRef = useRef<TextInput>(null);
-  const timeRef = useRef<TextInput>(null);
-  const feeRef = useRef<TextInput>(null);
+  const opponentRef = useRef<InputRef>(null);
+  const dateRef = useRef<InputRef>(null);
+  const timeRef = useRef<InputRef>(null);
+  const feeRef = useRef<InputRef>(null);
   const createAttempt = useRef<{ payload: string; id: string }>(undefined);
   const [busy, setBusy] = useState(false);
   const pending = useRef(false);
@@ -452,6 +452,8 @@ function MatchEditor({
   const loadMatch = useMatchLoader(matchId, team);
   const { previewCompetitions, previewUniforms } = usePreview();
   const load = useCallback(async () => {
+    const canEdit = !token || (await fetchTeam(id, token)).isOwner === true;
+    if (!canEdit) return null;
     const [catalog, match] = await Promise.all([
       token
         ? fetchCatalog(id, token)
@@ -484,6 +486,11 @@ function MatchEditor({
       {state.status === 'loading' && <LoadingMatches />}
       {state.status === 'error' && (
         <MatchLoadError error={state.error} retry={retry} />
+      )}
+      {state.status === 'ready' && !data && (
+        <Text style={styles.text}>
+          Somente o responsável pelo time pode alterar jogos.
+        </Text>
       )}
       {unavailable && <Text style={styles.text}>Jogo indisponível.</Text>}
       {data && !unavailable && (

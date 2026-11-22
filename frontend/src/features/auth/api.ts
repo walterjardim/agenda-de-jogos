@@ -1,4 +1,20 @@
+import { Platform } from 'react-native';
 import { apiUrl, loginSetupMessage } from './config';
+
+const webCookieSession = 'web-cookie-session:';
+
+export function usesWebCookie() {
+  return (
+    process.env.EXPO_PUBLIC_WEB_COOKIE_SESSION === 'true' &&
+    Platform.OS === 'web' &&
+    typeof window !== 'undefined' &&
+    Boolean(
+      apiUrl &&
+      window.location.protocol === 'https:' &&
+      new URL(apiUrl).origin === window.location.origin,
+    )
+  );
+}
 
 export type Profile = {
   id: string;
@@ -33,12 +49,14 @@ export async function request(
   const timeout = setTimeout(() => controller.abort(), 10000);
   const headers: Record<string, string> = { Accept: 'application/json' };
   if (body) headers['Content-Type'] = 'application/json';
-  if (token) headers.Authorization = `Bearer ${token}`;
+  if (token && !token.startsWith(webCookieSession))
+    headers.Authorization = `Bearer ${token}`;
 
   try {
     const response = await fetch(apiUrl + path, {
       method,
       headers,
+      credentials: usesWebCookie() ? 'same-origin' : 'omit',
       body: body ? JSON.stringify(body) : undefined,
       signal: controller.signal,
     });
@@ -86,8 +104,14 @@ export async function loginWithGoogle(
 ): Promise<AuthenticatedSession> {
   const result: unknown = await request('/auth/google', {
     method: 'POST',
-    body: { idToken },
+    body: {
+      idToken,
+      ...(Platform.OS === 'web' && {
+        webSession: usesWebCookie() ? 'cookie' : 'memory',
+      }),
+    },
   });
+  if (usesWebCookie()) return cookieSession(result);
   if (
     !isSession(result) ||
     !('user' in result) ||
@@ -100,6 +124,35 @@ export async function loginWithGoogle(
     expiresAt: result.expiresAt,
     user: profile(result.user),
   };
+}
+
+function cookieSession(result: unknown): AuthenticatedSession {
+  if (
+    !result ||
+    typeof result !== 'object' ||
+    !('user' in result) ||
+    !('expiresAt' in result) ||
+    typeof result.expiresAt !== 'string' ||
+    !Number.isFinite(Date.parse(result.expiresAt)) ||
+    Date.parse(result.expiresAt) <= Date.now()
+  ) {
+    throw new Error('A API retornou uma sessão inválida.');
+  }
+  return {
+    user: profile(result.user),
+    expiresAt: result.expiresAt,
+    sessionToken: `${webCookieSession}${result.expiresAt}`,
+  };
+}
+
+export async function restoreWebSession() {
+  if (!usesWebCookie()) return null;
+  try {
+    return cookieSession(await request('/auth/web/session'));
+  } catch (error) {
+    if (error instanceof ApiError && error.status === 401) return null;
+    throw error;
+  }
 }
 
 export async function getProfile(token: string) {

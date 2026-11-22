@@ -3,6 +3,7 @@ import type { FastifyInstance } from "fastify";
 import { z } from "zod";
 import { createAuthService } from "../auth/service.js";
 import { Prisma, type PrismaClient } from "../generated/prisma/client.js";
+import { createAccountRateLimit } from "../http/accountRateLimit.js";
 import { ApiError, parseBody } from "../http/errors.js";
 
 import { buildMatchMessage, messageSelect } from "./message.js";
@@ -168,23 +169,17 @@ function matchRange(
   return { gte, lt: upper };
 }
 
-async function lockAccessibleTeam(
+async function lockOwnedTeam(
   tx: Prisma.TransactionClient,
   teamId: string,
   userId: string,
 ) {
   const locked = await tx.$queryRaw<{ id: string }[]>`
-    SELECT id FROM teams WHERE id = ${teamId}::uuid FOR UPDATE
+    SELECT id FROM teams
+    WHERE id = ${teamId}::uuid AND user_id = ${userId}::uuid
+    FOR UPDATE
   `;
-  return (
-    locked.length > 0 &&
-    Boolean(
-      await tx.team.findUnique({
-        where: { id: teamId, ...teamAccess(userId) },
-        select: { id: true },
-      }),
-    )
-  );
+  return locked.length > 0;
 }
 
 function invalidReference(field: string) {
@@ -311,8 +306,19 @@ export async function matchRoutes(
     const { id } = parseBody(matchParams, request.params);
     const { type } = parseBody(messageQuery, request.query);
     const match = await db.match.findUnique({
-      where: { id, team: teamAccess(user.id) },
-      select: messageSelect,
+      where: {
+        id,
+        team: type === "callup" ? { userId: user.id } : teamAccess(user.id),
+      },
+      select: type === "callup"
+        ? messageSelect
+        : {
+            ...messageSelect,
+            callups: {
+              ...messageSelect.callups,
+              where: { match: { team: { userId: user.id } } },
+            },
+          },
     });
     if (!match) throw missingMatch();
     return buildMatchMessage(match, user.timezone, type);
@@ -323,7 +329,10 @@ export async function matchRoutes(
     const { id } = parseBody(matchParams, request.params);
     const match = await db.match.findUnique({
       where: { id, team: teamAccess(user.id) },
-      include: detailInclude,
+      include: {
+        ...detailInclude,
+        callups: { ...detailInclude.callups, where: { match: { team: { userId: user.id } } } },
+      },
     });
     if (!match) throw missingMatch();
     const { callups: _callups, hasSavedCallup, ...record } = match;
@@ -333,8 +342,11 @@ export async function matchRoutes(
     };
   });
 
+  const limitMatchChanges = createAccountRateLimit(app, 40);
+  const limitCallups = createAccountRateLimit(app, 20);
   app.post("/teams/:teamId/matches", async (request, reply) => {
     const { user } = await auth.requireSession(request.headers.authorization);
+    await limitMatchChanges(request, reply, user.id);
     const { teamId } = parseBody(teamParams, request.params);
     const { requestId, ...input } = parseBody(
       matchBody.extend({
@@ -344,7 +356,7 @@ export async function matchRoutes(
     );
     const createKey = requestId ? `${user.id}:${requestId}` : undefined;
     const match = await db.$transaction(async (tx) => {
-      if (!(await lockAccessibleTeam(tx, teamId, user.id))) throw missingTeam();
+      if (!(await lockOwnedTeam(tx, teamId, user.id))) throw missingTeam();
       if (createKey) {
         const existing = await tx.match.findFirst({
           where: { teamId, createKey },
@@ -368,10 +380,10 @@ export async function matchRoutes(
   ) {
     return db.$transaction(async (tx) => {
       const match = await tx.match.findUnique({
-        where: { id, team: teamAccess(userId) },
+        where: { id, team: { userId } },
         select: { teamId: true },
       });
-      if (!match || !(await lockAccessibleTeam(tx, match.teamId, userId)))
+      if (!match || !(await lockOwnedTeam(tx, match.teamId, userId)))
         throw missingMatch();
       try {
         return await mutate(tx, match.teamId);
@@ -387,8 +399,9 @@ export async function matchRoutes(
     });
   }
 
-  app.put("/matches/:id/callups", async (request) => {
+  app.put("/matches/:id/callups", async (request, reply) => {
     const { user } = await auth.requireSession(request.headers.authorization);
+    await limitCallups(request, reply, user.id);
     const { id } = parseBody(matchParams, request.params);
     const { athleteIds } = parseBody(callupBody, request.body);
     const match = await mutateMatch(id, user.id, async (tx, teamId) => {
@@ -434,8 +447,9 @@ export async function matchRoutes(
     };
   });
 
-  app.patch("/matches/:id", async (request) => {
+  app.patch("/matches/:id", async (request, reply) => {
     const { user } = await auth.requireSession(request.headers.authorization);
+    await limitMatchChanges(request, reply, user.id);
     const { id } = parseBody(matchParams, request.params);
     const input = parseBody(matchBody.partial(), request.body);
     const match = await mutateMatch(id, user.id, async (tx, teamId) => {
@@ -451,6 +465,7 @@ export async function matchRoutes(
 
   app.delete("/matches/:id", async (request, reply) => {
     const { user } = await auth.requireSession(request.headers.authorization);
+    await limitMatchChanges(request, reply, user.id);
     const { id } = parseBody(matchParams, request.params);
     await mutateMatch(id, user.id, (tx) => tx.match.delete({ where: { id } }));
     return reply.code(204).send();

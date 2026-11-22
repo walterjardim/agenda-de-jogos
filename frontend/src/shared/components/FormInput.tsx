@@ -1,6 +1,5 @@
-import { type Ref, useState } from 'react';
+import { type ComponentRef, type Ref, useState } from 'react';
 import {
-  type TextInput as InputRef,
   StyleSheet,
   Text,
   TextInput,
@@ -9,6 +8,8 @@ import {
 } from 'react-native';
 import { surfaces } from '../theme/surfaces';
 import { theme } from '../theme/theme';
+
+export type InputRef = ComponentRef<typeof TextInput>;
 
 export function FormInput({
   style,

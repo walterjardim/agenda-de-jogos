@@ -8,6 +8,7 @@ import type {
 } from '../matches/model';
 
 type Preview = {
+  previewOpen: boolean;
   openPreview: () => void;
   closePreview: () => void;
   followingAjax: boolean;

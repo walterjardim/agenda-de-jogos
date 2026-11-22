@@ -1,36 +1,30 @@
-import { useNavigation } from 'expo-router';
-import {
-  type NavigationAction,
-  usePreventRemove,
-} from 'expo-router/react-navigation';
-import { useRef, useState } from 'react';
+import { usePreventRemove } from 'expo-router';
+import { useState } from 'react';
 import { Modal, StyleSheet, Text, View } from 'react-native';
 import { surfaces } from '../theme/surfaces';
 import { ActionButton } from './ActionButton';
 
 export function useDiscardChanges(dirty: boolean, saving = false) {
-  const navigation = useNavigation();
-  const bypass = useRef(false);
-  const [action, setAction] = useState<NavigationAction>();
+  const [leaving, setLeaving] = useState(false);
+  const [repeatRemoval, setRepeatRemoval] = useState<() => void>();
 
-  usePreventRemove(dirty || saving, ({ data }) => {
-    if (bypass.current) {
-      bypass.current = false;
-      navigation.dispatch(data.action);
-    } else if (!saving) {
-      setAction(data.action);
-    }
-  });
+  const disablePrevention = usePreventRemove(
+    !leaving && (dirty || saving),
+    ({ repeat }) => {
+      if (!saving) setRepeatRemoval(() => repeat);
+    },
+  );
 
   return {
     allowExit: () => {
-      bypass.current = true;
+      setLeaving(true);
+      disablePrevention();
     },
     confirmation: (
       <Modal
         transparent
-        visible={Boolean(action)}
-        onRequestClose={() => setAction(undefined)}
+        visible={Boolean(repeatRemoval)}
+        onRequestClose={() => setRepeatRemoval(undefined)}
       >
         <View style={styles.overlay}>
           <View accessibilityViewIsModal style={[surfaces.card, styles.card]}>
@@ -43,14 +37,15 @@ export function useDiscardChanges(dirty: boolean, saving = false) {
             <ActionButton
               primary
               label="Continuar editando"
-              onPress={() => setAction(undefined)}
+              onPress={() => setRepeatRemoval(undefined)}
             />
             <ActionButton
               destructive
               label="Descartar alterações"
               onPress={() => {
-                setAction(undefined);
-                if (action) navigation.dispatch(action);
+                setRepeatRemoval(undefined);
+                setLeaving(true);
+                repeatRemoval?.();
               }}
             />
           </View>

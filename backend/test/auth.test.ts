@@ -276,3 +276,60 @@ test(
     assert.equal((await secondProfile()).statusCode, 401);
   },
 );
+
+test('sessão web usa cookie HttpOnly e bloqueia escritas de outra origem', async (t) => {
+  const origin = 'https://agenda.example.com';
+  const user = { id: randomUUID(), name: 'Treinador', email: 'treinador@example.com' };
+  let expiresAt: Date;
+  let sessionHash: string;
+  let revoked = false;
+  const db = {
+    $transaction: async (run: (tx: unknown) => Promise<unknown>) => run({
+      user: { upsert: async () => user },
+      authSession: {
+        create: async ({ data }: { data: { expiresAt: Date; tokenHash: string } }) => {
+          expiresAt = data.expiresAt;
+          sessionHash = data.tokenHash;
+        },
+      },
+    }),
+    authSession: {
+      findUnique: async ({ where }: { where: { tokenHash: string } }) =>
+        !revoked && where.tokenHash === sessionHash ? { id: 'session', user, expiresAt } : null,
+      updateMany: async () => { revoked = true; },
+    },
+  };
+  const app = buildApp({
+    db: db as unknown as Parameters<typeof buildApp>[0]['db'],
+    sessionTtlHours: 168,
+    webSessionOrigin: origin,
+    verifyGoogleIdentity: async () => ({ sub: 'google-id', email: user.email, name: user.name }),
+  });
+  t.after(() => app.close());
+  const login = (requestOrigin: string) => app.inject({
+    method: 'POST', url: '/api/v1/auth/google', headers: { origin: requestOrigin },
+    payload: { idToken: 'test-credential', webSession: 'cookie' },
+  });
+  assert.equal((await login('https://other.example.com')).statusCode, 403);
+  const response = await login(origin);
+  assert.equal(response.statusCode, 200);
+  assert.equal(response.json().sessionToken, undefined);
+  assert.ok(Date.parse(response.json().expiresAt) - Date.now() <= 8 * 60 * 60 * 1000);
+  const setCookie = response.headers['set-cookie'];
+  assert.ok(typeof setCookie === 'string');
+  assert.match(setCookie, /^__Host-agenda-session=[A-Za-z0-9_-]{43}; Path=\/; Secure; HttpOnly; SameSite=Strict;/);
+  const cookie = setCookie.split(';')[0]!;
+  const restore = await app.inject({ url: '/api/v1/auth/web/session', headers: { cookie } });
+  assert.equal(restore.statusCode, 200);
+  assert.equal(restore.json().sessionToken, undefined);
+  const logout = (requestOrigin?: string) => app.inject({
+    method: 'POST', url: '/api/v1/auth/logout',
+    headers: { cookie, ...(requestOrigin && { origin: requestOrigin }) },
+  });
+  assert.equal((await logout()).statusCode, 403);
+  assert.equal((await logout('https://other.example.com')).statusCode, 403);
+  const ended = await logout(origin);
+  assert.equal(ended.statusCode, 204);
+  assert.match(String(ended.headers['set-cookie']), /Max-Age=0/);
+  assert.equal((await app.inject({ url: '/api/v1/auth/web/session', headers: { cookie } })).statusCode, 401);
+});

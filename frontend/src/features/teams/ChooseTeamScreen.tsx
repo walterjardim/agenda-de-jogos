@@ -197,8 +197,7 @@ export function ChooseTeamScreen({
               {followTarget === team.id && (
                 <View style={styles.row}>
                   <Text style={styles.text}>
-                    Ao seguir, você pode acompanhar, cadastrar, editar e excluir
-                    jogos na agenda compartilhada deste time.
+                    Ao seguir, você pode acompanhar os jogos deste time.
                   </Text>
                   <ActionButton
                     label="Confirmar que quero seguir"

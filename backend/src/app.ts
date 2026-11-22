@@ -17,6 +17,7 @@ type AppOptions = {
   verifyGoogleIdentity: VerifyGoogleIdentity;
   logger?: boolean;
   corsOrigins?: string[];
+  webSessionOrigin?: string;
 };
 
 export function buildApp(options: AppOptions) {
@@ -27,6 +28,22 @@ export function buildApp(options: AppOptions) {
   });
 
   registerErrors(app);
+  if (options.webSessionOrigin) {
+    app.addHook('onRequest', async (request) => {
+      if (request.headers.authorization || request.method === 'OPTIONS') return;
+      const token = request.headers.cookie
+        ?.split(';')
+        .map((part) => part.trim())
+        .find((part) => part.startsWith('__Host-agenda-session='))
+        ?.slice('__Host-agenda-session='.length);
+      if (!token || !/^[A-Za-z0-9_-]{43}$/.test(token)) return;
+      if (!['GET', 'HEAD'].includes(request.method) &&
+          request.headers.origin !== options.webSessionOrigin) {
+        throw new ApiError(403, 'FORBIDDEN', 'Origem da sessão não autorizada');
+      }
+      request.headers.authorization = `Bearer ${token}`;
+    });
+  }
   if (options.corsOrigins?.length) {
     app.register(cors, {
       origin: options.corsOrigins,
@@ -35,7 +52,8 @@ export function buildApp(options: AppOptions) {
     });
   }
   app.register(rateLimit, {
-    global: false,
+    max: 240,
+    timeWindow: '1 minute',
     errorResponseBuilder: (_request, context) =>
       new ApiError(
         context.statusCode,

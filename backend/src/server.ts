@@ -13,6 +13,7 @@ async function start() {
     sessionTtlHours: config.SESSION_TTL_HOURS,
     logger: true,
     corsOrigins: config.CORS_ORIGINS,
+    webSessionOrigin: config.WEB_SESSION_ORIGIN,
   });
 
   app.addHook('onClose', () => db.$disconnect());

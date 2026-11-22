@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { useIsFocused, useLocalSearchParams, useRouter } from 'expo-router';
-import { Text, TextInput, View } from 'react-native';
-import { FormField } from '../../shared/components/FormInput';
+import { Text, View } from 'react-native';
+import { FormField, type InputRef } from '../../shared/components/FormInput';
 import { surfaces as styles } from '../../shared/theme/surfaces';
 import { TeamIdentity } from './TeamIdentity';
 import { ApiError } from '../auth/api';
@@ -39,7 +39,7 @@ export function ManageTeamsScreen({ token }: { token: string }) {
   );
   const [savedTeam, setSavedTeam] = useState<string>();
   const [missing, setMissing] = useState<keyof TeamInput>();
-  const fieldRefs = useRef<Partial<Record<keyof TeamInput, TextInput | null>>>(
+  const fieldRefs = useRef<Partial<Record<keyof TeamInput, InputRef | null>>>(
     {},
   );
 

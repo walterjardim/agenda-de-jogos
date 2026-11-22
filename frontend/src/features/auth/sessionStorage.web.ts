@@ -1,7 +1,7 @@
 const key = 'agenda-de-jogos.session';
 
 export const sessionStorage = {
-  read: async () => window.sessionStorage.getItem(key),
-  write: async (value: string) => window.sessionStorage.setItem(key, value),
+  read: async () => null,
+  write: async () => undefined,
   clear: async () => window.sessionStorage.removeItem(key),
 };

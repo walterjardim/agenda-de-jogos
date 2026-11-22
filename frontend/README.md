@@ -1,6 +1,6 @@
 # Agenda de Jogos — Frontend
 
-Base em React Native, Expo SDK 57 e TypeScript estrito. A tela inicial é o login, inspirada em `../../MVP/wireframe/login-UX.png` e `wireframe-mvp.md`.
+Base em React Native, Expo SDK 58 e TypeScript estrito. A tela inicial é o login, inspirada em `../../MVP/wireframe/login-UX.png` e `wireframe-mvp.md`.
 
 ## Executar
 
@@ -63,14 +63,14 @@ de desenvolvimento com um build já instalado, use `npm start`.
 ### APK local no Windows (ARM64)
 
 Use Node.js 24, JDK 17 e o Android SDK. Aponte `JAVA_HOME` para o JDK e
-`ANDROID_HOME` para o SDK. No SDK Manager, instale a plataforma Android 36,
-Build-Tools 36.0.0, Platform-Tools, NDK 27.1.12297006 e CMake 3.22.1, e aceite
+`ANDROID_HOME` para o SDK. No SDK Manager, instale a plataforma Android 37.0,
+Build-Tools 37.0.0, Platform-Tools, NDK 27.1.12297006 e CMake 3.22.1, e aceite
 as licenças. Com o `sdkmanager` das ferramentas de linha de comando no `PATH`,
 você pode instalar esses componentes pelo terminal.
 
 ```sh
 sdkmanager --licenses
-sdkmanager "platforms;android-36" "build-tools;36.0.0" "platform-tools" "ndk;27.1.12297006" "cmake;3.22.1"
+sdkmanager "platforms;android-37.0" "build-tools;37.0.0" "platform-tools" "ndk;27.1.12297006" "cmake;3.22.1"
 ```
 
 Com as dependências instaladas e o `.env` configurado conforme a seção
@@ -141,11 +141,12 @@ seguimento e os jogos de teste são descartados ao sair. O acesso à prévia fic
 
 ## Sessão e perfil
 
-O login envia o ID token para `POST /auth/google`. O app guarda a sessão emitida
-pela API no SecureStore em Android e iOS. Na web, usa o armazenamento da aba,
-que mantém a sessão ao recarregar a página e é descartado ao fechar a aba.
-Ao restaurar a sessão, o app consulta `GET /me`. O perfil salva o fuso em
-`PATCH /me`, e **Sair** revoga a sessão em `POST /auth/logout`.
+O login envia o ID token para `POST /auth/google`. Em Android e iOS, a sessão
+fica no SecureStore. Na web, a aplicação mantém a sessão em memória ou usa
+cookie HttpOnly quando o site e a API compartilham uma origem HTTPS. Consulte
+a [configuração de sessões web](../backend/README.md#sessões-web-e-proteção-da-api).
+O perfil salva o fuso em `PATCH /me`, e **Sair** revoga a sessão em
+`POST /auth/logout`.
 
 O app abre **Buscar times** quando a conta ainda não tem time selecionado e
 **Agenda da semana** quando o perfil já tem um time. A busca exige pelo menos

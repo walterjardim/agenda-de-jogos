@@ -1,11 +1,15 @@
 import type { FastifyInstance } from 'fastify';
 import { z } from 'zod';
 import type { PrismaClient } from '../generated/prisma/client.js';
-import { parseBody } from '../http/errors.js';
+import { ApiError, parseBody } from '../http/errors.js';
 import type { VerifyGoogleIdentity } from './google.js';
 import { createAuthService } from './service.js';
 
-const googleLoginBody = z.strictObject({ idToken: z.string().min(1).max(8192) });
+const googleLoginBody = z.strictObject({
+  idToken: z.string().min(1).max(8192),
+  webSession: z.enum(['cookie', 'memory']).optional(),
+});
+const cookieAttributes = 'Path=/; Secure; HttpOnly; SameSite=Strict';
 
 const timezone = z
   .string()
@@ -36,6 +40,7 @@ type AuthOptions = {
   db: PrismaClient;
   sessionTtlHours: number;
   verifyGoogleIdentity: VerifyGoogleIdentity;
+  webSessionOrigin?: string;
 };
 
 export async function authRoutes(app: FastifyInstance, options: AuthOptions) {
@@ -48,16 +53,35 @@ export async function authRoutes(app: FastifyInstance, options: AuthOptions) {
   app.post(
     '/auth/google',
     { config: { rateLimit: { max: 10, timeWindow: '1 minute' } } },
-    async (request) => {
-      const { idToken } = parseBody(googleLoginBody, request.body);
+    async (request, reply) => {
+      const { idToken, webSession } = parseBody(googleLoginBody, request.body);
+      if (webSession === 'cookie' && (!options.webSessionOrigin ||
+          request.headers.origin !== options.webSessionOrigin)) {
+        throw new ApiError(403, 'FORBIDDEN', 'Origem da sessão não autorizada');
+      }
       const identity = await options.verifyGoogleIdentity(idToken);
-      return auth.login(identity);
+      const session = await auth.login(identity,
+        webSession ? Math.min(options.sessionTtlHours, webSession === 'cookie' ? 8 : 1) : undefined,
+      );
+      if (webSession !== 'cookie') return session;
+      reply.header('Set-Cookie', `__Host-agenda-session=${session.sessionToken}; ${cookieAttributes}; Expires=${new Date(session.expiresAt).toUTCString()}`);
+      return { user: session.user, expiresAt: session.expiresAt };
     },
   );
+
+  if (options.webSessionOrigin) {
+    app.get('/auth/web/session', async (request) => {
+      const { user, expiresAt } = await auth.requireSession(request.headers.authorization);
+      return { user, expiresAt: expiresAt.toISOString() };
+    });
+  }
 
   app.post('/auth/logout', async (request, reply) => {
     const session = await auth.requireSession(request.headers.authorization);
     await auth.logout(session.id);
+    if (options.webSessionOrigin && request.headers.origin === options.webSessionOrigin) {
+      reply.header('Set-Cookie', `__Host-agenda-session=; ${cookieAttributes}; Max-Age=0`);
+    }
     return reply.code(204).send();
   });
 

@@ -23,9 +23,9 @@ function unauthorized() {
 
 export function createAuthService(db: PrismaClient, sessionTtlHours: number) {
   return {
-    async login({ sub, email, name }: GoogleIdentity) {
+    async login({ sub, email, name }: GoogleIdentity, ttlHours = sessionTtlHours) {
       const sessionToken = randomBytes(32).toString('base64url');
-      const expiresAt = new Date(Date.now() + sessionTtlHours * 60 * 60 * 1000);
+      const expiresAt = new Date(Date.now() + ttlHours * 60 * 60 * 1000);
 
       const user = await db.$transaction(async (tx) => {
         const profile = await tx.user.upsert({
@@ -57,7 +57,7 @@ export function createAuthService(db: PrismaClient, sessionTtlHours: number) {
           revokedAt: null,
           expiresAt: { gt: new Date() },
         },
-        select: { id: true, user: { select: publicProfile } },
+        select: { id: true, expiresAt: true, user: { select: publicProfile } },
       });
       if (!session) {
         throw unauthorized();

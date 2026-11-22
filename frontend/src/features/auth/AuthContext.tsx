@@ -7,6 +7,7 @@ import {
   useRef,
   useState,
 } from 'react';
+import { Platform } from 'react-native';
 import {
   ApiError,
   type AuthenticatedSession,
@@ -14,6 +15,7 @@ import {
   isSession,
   loginWithGoogle,
   revokeSession,
+  restoreWebSession,
   updateTimezone,
   selectTeam,
 } from './api';
@@ -44,6 +46,10 @@ async function clearStoredSession() {
 }
 
 async function restoreSession(): Promise<AuthenticatedSession | null> {
+  if (Platform.OS === 'web') {
+    await clearStoredSession();
+    return restoreWebSession();
+  }
   if (!apiUrl) return null;
   const raw = await sessionStorage.read();
   if (!raw) return null;
@@ -142,13 +148,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signIn = useCallback(async (idToken: string) => {
     const next = await loginWithGoogle(idToken);
     try {
-      await sessionStorage.write(
-        JSON.stringify({
-          apiUrl,
-          sessionToken: next.sessionToken,
-          expiresAt: next.expiresAt,
-        }),
-      );
+      if (Platform.OS !== 'web')
+        await sessionStorage.write(
+          JSON.stringify({
+            apiUrl,
+            sessionToken: next.sessionToken,
+            expiresAt: next.expiresAt,
+          }),
+        );
     } catch {
       await revokeSession(next.sessionToken).catch(() => undefined);
       throw new Error('Não foi possível guardar a sessão.');

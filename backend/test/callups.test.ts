@@ -223,7 +223,7 @@ test("salva convocações, valida acesso e preserva seleção em entradas invál
 });
 
 test(
-  "PostgreSQL preserva convocações em falhas e serializa gravações de seguidores",
+  "PostgreSQL preserva convocações em falhas e restringe gravações ao responsável",
   {
     skip: process.env.TEST_DATABASE_URL
       ? false
@@ -338,7 +338,8 @@ test(
         .hasSavedCallup,
       false,
     );
-    const initial = await save(follower.headers, [second.id, first.id]);
+    assert.equal((await save(follower.headers, [second.id, first.id])).statusCode, 404);
+    const initial = await save(owner.headers, [second.id, first.id]);
     assert.equal(initial.statusCode, 200, initial.body);
     assert.deepEqual(
       initial.json().callups.map((item: any) => item.athleteId),
@@ -348,15 +349,16 @@ test(
     assert.equal(await db.callup.count({ where: { matchId: match.id } }), 2);
     assert.equal((await save(owner.headers, [foreign.id])).statusCode, 422);
     const results = await Promise.all([
-      save(follower.headers, [first.id]),
-      save(otherFollower.headers, [second.id]),
+      save(owner.headers, [first.id]),
+      save(owner.headers, [second.id]),
     ]);
     for (const result of results)
       assert.equal(result.statusCode, 200, result.body);
     const final = await db.callup.findMany({ where: { matchId: match.id } });
     assert.equal(final.length, 1);
     assert.ok([first.id, second.id].includes(final[0]!.athleteId));
-    assert.equal((await save(follower.headers, [])).statusCode, 200);
+    assert.equal((await save(otherFollower.headers, [])).statusCode, 404);
+    assert.equal((await save(owner.headers, [])).statusCode, 200);
     const detail = await app.inject({
       url: `/api/v1/matches/${match.id}`,
       headers: owner.headers,

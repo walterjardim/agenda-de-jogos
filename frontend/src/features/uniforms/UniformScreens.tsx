@@ -136,7 +136,15 @@ function UniformList({ team }: { team: AgendaTeam }) {
   }
 
   return (
-    <HomeScreen title="Uniformes" description={data?.team.name} standalone>
+    <HomeScreen
+      title="Uniformes"
+      description={data?.team.name}
+      standalone
+      onBack={() =>
+        router.canGoBack() ? router.back() : router.dismissTo('/agenda')
+      }
+      backDisabled={busy}
+    >
       <SelectField
         label="Peças"
         options={[{ id: null, label: 'Todas as peças' }, ...types]}
@@ -257,12 +265,6 @@ function UniformList({ team }: { team: AgendaTeam }) {
             onPress={() => router.push('/uniforme')}
           />
         )}
-        <ActionButton
-          icon="back"
-          label="Voltar à agenda"
-          disabled={busy}
-          onPress={() => router.dismissTo('/agenda')}
-        />
       </View>
     </HomeScreen>
   );
@@ -606,6 +608,7 @@ function UniformEditor({ team, id }: { team: AgendaTeam; id?: string }) {
       title={id ? 'Editar peça' : 'Nova peça'}
       description={data?.team.name}
       standalone
+      onBack={() => router.dismissTo('/uniformes')}
     >
       {state.status === 'loading' && <LoadingMatches />}
       {state.status === 'error' && (
@@ -618,15 +621,7 @@ function UniformEditor({ team, id }: { team: AgendaTeam; id?: string }) {
             : 'Somente o criador do time pode alterar uniformes.'}
         </Text>
       )}
-      {available ? (
-        <UniformForm key={id ?? 'new'} team={team} piece={piece} />
-      ) : (
-        <ActionButton
-          icon="back"
-          label="Voltar à lista"
-          onPress={() => router.dismissTo('/uniformes')}
-        />
-      )}
+      {available && <UniformForm key={id ?? 'new'} team={team} piece={piece} />}
     </HomeScreen>
   );
 }
@@ -652,8 +647,8 @@ const local = StyleSheet.create({
   piece: { flexDirection: 'row', alignItems: 'center', gap: 16 },
   details: { flex: 1, gap: 6 },
   swatch: {
-    width: 44,
-    height: 44,
+    width: 48,
+    height: 48,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: theme.colors.border,

@@ -120,7 +120,7 @@ export const styles = StyleSheet.create({
   indicator: { color: theme.colors.accent, fontSize: 17, fontWeight: '800' },
   options: { padding: 4, gap: 2, borderRadius: 12 },
   option: {
-    minHeight: 44,
+    minHeight: 48,
     flexDirection: 'row',
     alignItems: 'center',
     paddingHorizontal: 10,

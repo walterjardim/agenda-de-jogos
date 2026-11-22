@@ -33,7 +33,6 @@ export default function HomeLayout() {
         name="agenda"
         options={{
           title: 'Agenda',
-          href: hasActiveTeam ? undefined : null,
           tabBarIcon: ({ color }) => <TabIcon name="agenda" color={color} />,
         }}
       />

@@ -197,12 +197,6 @@ function Selection({
           disabled={busy || count === 0}
           onPress={() => void submit(true)}
         />
-        <ActionButton
-          icon="back"
-          label="Voltar à ficha"
-          disabled={busy}
-          onPress={() => router.dismissTo(sheet)}
-        />
       </View>
     </>
   );
@@ -233,6 +227,9 @@ function Callups({ id, team }: { id: string; team: AgendaTeam }) {
       title="Convocação"
       description={data?.match.opponent}
       standalone
+      onBack={() =>
+        router.dismissTo({ pathname: '/jogo/[id]', params: { id } })
+      }
     >
       {state.status === 'loading' && <LoadingMatches />}
       {state.status === 'error' && (
@@ -241,17 +238,7 @@ function Callups({ id, team }: { id: string; team: AgendaTeam }) {
       {state.status === 'ready' && !data && (
         <Text style={styles.text}>Jogo indisponível.</Text>
       )}
-      {data ? (
-        <Selection {...data} token={token} />
-      ) : (
-        <ActionButton
-          icon="back"
-          label="Voltar à ficha"
-          onPress={() =>
-            router.dismissTo({ pathname: '/jogo/[id]', params: { id } })
-          }
-        />
-      )}
+      {data && <Selection {...data} token={token} />}
     </HomeScreen>
   );
 }

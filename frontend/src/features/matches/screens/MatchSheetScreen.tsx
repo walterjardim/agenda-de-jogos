@@ -1,6 +1,16 @@
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useRef, useState } from 'react';
-import { Text, View } from 'react-native';
+import { type ComponentRef, useCallback, useRef, useState } from 'react';
+import {
+  AccessibilityInfo,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+} from 'react-native';
+import { surfaces } from '../../../shared/theme/surfaces';
 import { ApiError } from '../../auth/api';
 import { useAuth } from '../../auth/AuthContext';
 import { ActionButton } from '../../../shared/components/ActionButton';
@@ -41,6 +51,24 @@ function MatchSheet({ id, team }: { id: string; team: AgendaTeam }) {
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState('');
   const pending = useRef(false);
+  const deleteButton = useRef<ComponentRef<typeof Pressable>>(null);
+  const cancelButton = useRef<ComponentRef<typeof Pressable>>(null);
+
+  function focusButton(button: ComponentRef<typeof Pressable> | null) {
+    if (!button) return;
+    if (Platform.OS === 'web') button.focus();
+    else AccessibilityInfo.sendAccessibilityEvent(button, 'focus');
+  }
+
+  function cancelDeletion() {
+    if (pending.current) return;
+    setConfirming(false);
+    setError('');
+    if (error) retry();
+    if (Platform.OS === 'android') {
+      requestAnimationFrame(() => focusButton(deleteButton.current));
+    }
+  }
 
   async function remove() {
     if (pending.current) return;
@@ -75,6 +103,8 @@ function MatchSheet({ id, team }: { id: string; team: AgendaTeam }) {
           : match.opponent)
       }
       standalone
+      onBack={() => router.dismissTo('/agenda')}
+      backDisabled={deleting}
     >
       {state.status === 'loading' && <LoadingMatches />}
       {state.status === 'error' && (
@@ -132,7 +162,7 @@ function MatchSheet({ id, team }: { id: string; team: AgendaTeam }) {
           <View style={styles.row}>
             <ActionButton
               icon="share"
-              label="Compartilhar ficha no WhatsApp"
+              label="Compartilhar ficha"
               primary
               disabled={confirming}
               onPress={() =>
@@ -160,62 +190,66 @@ function MatchSheet({ id, team }: { id: string; team: AgendaTeam }) {
                 router.push({ pathname: '/editar-jogo/[id]', params: { id } })
               }
             />
-            {!confirming && (
-              <ActionButton
-                icon="remove"
-                label="Excluir jogo"
-                destructive
-                onPress={() => setConfirming(true)}
-              />
-            )}
             <ActionButton
-              icon="back"
-              label="Voltar à agenda"
-              disabled={deleting}
-              onPress={() => router.dismissTo('/agenda')}
+              ref={deleteButton}
+              icon="remove"
+              label="Excluir jogo"
+              destructive
+              onPress={() => setConfirming(true)}
             />
           </View>
-          {confirming && (
-            <View style={[styles.card, styles.highlighted]}>
-              <Text style={styles.label}>
-                Excluir este jogo e sua convocação da agenda do time? A exclusão
-                afeta todas as pessoas que acompanham a equipe.
-              </Text>
-              {Boolean(error) && (
-                <Text accessibilityLiveRegion="polite" style={styles.error}>
-                  {error}
+          <Modal
+            transparent
+            visible={confirming}
+            onRequestClose={cancelDeletion}
+            onShow={() => focusButton(cancelButton.current)}
+            onDismiss={() => focusButton(deleteButton.current)}
+            aria-labelledby="delete-match-title"
+          >
+            <ScrollView contentContainerStyle={dialogStyles.overlay}>
+              <View
+                accessibilityViewIsModal
+                style={[surfaces.card, dialogStyles.card]}
+              >
+                <Text
+                  nativeID="delete-match-title"
+                  accessibilityRole="header"
+                  style={styles.title}
+                >
+                  Excluir jogo?
                 </Text>
-              )}
-              <View style={styles.row}>
-                <ActionButton
-                  icon="remove"
-                  label={deleting ? 'Excluindo…' : 'Confirmar exclusão'}
-                  primary
-                  disabled={deleting}
-                  onPress={() => void remove()}
-                />
-                <ActionButton
-                  icon="cancel"
-                  label="Cancelar exclusão"
-                  disabled={deleting}
-                  onPress={() => {
-                    setConfirming(false);
-                    setError('');
-                    retry();
-                  }}
-                />
+                <Text style={styles.text}>
+                  O jogo e sua convocação serão removidos da agenda para todas
+                  as pessoas que acompanham o time.
+                </Text>
+                {Boolean(error) && (
+                  <Text
+                    accessibilityLiveRegion="polite"
+                    aria-live="polite"
+                    style={styles.error}
+                  >
+                    {error}
+                  </Text>
+                )}
+                <View style={styles.row}>
+                  <ActionButton
+                    ref={cancelButton}
+                    label="Cancelar"
+                    disabled={deleting}
+                    onPress={cancelDeletion}
+                  />
+                  <ActionButton
+                    icon="remove"
+                    label={deleting ? 'Excluindo…' : 'Excluir jogo'}
+                    destructive
+                    disabled={deleting}
+                    onPress={() => void remove()}
+                  />
+                </View>
               </View>
-            </View>
-          )}
+            </ScrollView>
+          </Modal>
         </>
-      )}
-      {!match && (
-        <ActionButton
-          icon="back"
-          label="Voltar à agenda"
-          disabled={deleting}
-          onPress={() => router.dismissTo('/agenda')}
-        />
       )}
     </HomeScreen>
   );
@@ -227,3 +261,14 @@ export function MatchSheetScreen() {
   if (!team || !id) return <Redirect href="/buscar" />;
   return <MatchSheet key={`${id}:${team.id}`} id={id} team={team} />;
 }
+
+const dialogStyles = StyleSheet.create({
+  overlay: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    padding: 20,
+  },
+  card: { width: '100%', maxWidth: 440 },
+});

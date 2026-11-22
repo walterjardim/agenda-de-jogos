@@ -89,6 +89,13 @@ export function ChooseTeamScreen({
     <HomeScreen
       title={mine ? 'Trocar time' : 'Buscar times'}
       standalone={mine}
+      onBack={
+        mine
+          ? () =>
+              router.canGoBack() ? router.back() : router.replace('/agenda')
+          : undefined
+      }
+      backDisabled={!!busy}
       description={
         mine
           ? 'Escolha entre suas equipes e os times que você acompanha.'
@@ -176,7 +183,6 @@ export function ChooseTeamScreen({
                         ? 'Abrir agenda'
                         : 'Escolher time'
                   }
-                  primary
                   disabled={!!busy}
                   onPress={() => void choose(team.id)}
                 />
@@ -184,7 +190,6 @@ export function ChooseTeamScreen({
                 <ActionButton
                   icon="follow"
                   label={busy === team.id ? 'Seguindo…' : 'Seguir'}
-                  primary
                   disabled={!!busy}
                   onPress={() => setFollowTarget(team.id)}
                 />
@@ -251,7 +256,7 @@ export function ChooseTeamScreen({
           disabled={!!busy}
           onPress={() => router.navigate('/meus-times')}
         />
-        {session?.user.activeTeamId && (
+        {!mine && session?.user.activeTeamId && (
           <ActionButton
             icon="back"
             label="Voltar à agenda"

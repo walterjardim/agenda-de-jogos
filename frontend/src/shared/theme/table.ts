@@ -25,10 +25,10 @@ export const tableStyles = StyleSheet.create({
   position: { color: theme.colors.muted, fontSize: 14, lineHeight: 20 },
   status: { color: theme.colors.muted, fontSize: 12, fontWeight: '600' },
   unavailable: { color: theme.colors.accent },
-  actions: { width: 96, flexDirection: 'row', gap: 4 },
+  actions: { width: 100, flexDirection: 'row', gap: 4 },
   action: {
-    width: 46,
-    minHeight: 44,
+    width: 48,
+    minHeight: 48,
     alignItems: 'center',
     justifyContent: 'center',
     paddingVertical: 6,

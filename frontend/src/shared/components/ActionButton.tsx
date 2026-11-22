@@ -1,3 +1,4 @@
+import type { ComponentRef, Ref } from 'react';
 import { Pressable, StyleSheet, Text } from 'react-native';
 import { Icon, type IconName } from './Icon';
 import { theme } from '../theme/theme';
@@ -10,6 +11,7 @@ export function ActionButton({
   disabled = false,
   destructive = false,
   fullWidth = false,
+  ref,
 }: {
   label: string;
   icon?: IconName;
@@ -18,9 +20,11 @@ export function ActionButton({
   disabled?: boolean;
   destructive?: boolean;
   fullWidth?: boolean;
+  ref?: Ref<ComponentRef<typeof Pressable>>;
 }) {
   return (
     <Pressable
+      ref={ref}
       accessibilityRole="button"
       accessibilityState={{ disabled }}
       disabled={disabled}
@@ -52,6 +56,7 @@ const styles = StyleSheet.create({
     alignSelf: 'flex-start',
     maxWidth: '100%',
     minHeight: 48,
+    minWidth: 48,
     justifyContent: 'center',
     flexDirection: 'row',
     alignItems: 'center',

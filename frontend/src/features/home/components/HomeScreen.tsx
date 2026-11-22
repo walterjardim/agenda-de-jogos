@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { ScrollView, StyleSheet, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { ActionButton } from '../../../shared/components/ActionButton';
 import { CalendarIcon } from '../../../shared/components/CalendarIcon';
 import { surfaces } from '../../../shared/theme/surfaces';
 import { theme } from '../../../shared/theme/theme';
@@ -10,11 +11,15 @@ export function HomeScreen({
   title,
   description,
   standalone = false,
+  onBack,
+  backDisabled = false,
   children,
 }: {
   title: string;
   description?: string;
   standalone?: boolean;
+  onBack?: () => void;
+  backDisabled?: boolean;
   children?: ReactNode;
 }) {
   const { session } = useAuth();
@@ -42,6 +47,14 @@ export function HomeScreen({
                 {session ? 'Agenda de Jogos' : 'Agenda de Jogos · Prévia'}
               </Text>
             </View>
+            {onBack && (
+              <ActionButton
+                icon="back"
+                label="Voltar"
+                onPress={onBack}
+                disabled={backDisabled}
+              />
+            )}
             <Text accessibilityRole="header" style={styles.title}>
               {title}
             </Text>

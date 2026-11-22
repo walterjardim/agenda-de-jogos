@@ -258,7 +258,14 @@ function Records({ kind, team }: { kind: RecordKind; team: AgendaTeam }) {
   const data = state.status === 'ready' ? state.data : null;
 
   return (
-    <HomeScreen title={screen.title} description={data?.team.name} standalone>
+    <HomeScreen
+      title={screen.title}
+      description={data?.team.name}
+      standalone
+      onBack={() =>
+        router.canGoBack() ? router.back() : router.dismissTo('/agenda')
+      }
+    >
       {state.status === 'loading' && <LoadingMatches />}
       {state.status === 'error' && (
         <MatchLoadError error={state.error} retry={retry} />
@@ -306,11 +313,6 @@ function Records({ kind, team }: { kind: RecordKind; team: AgendaTeam }) {
             onPress={() => router.push(screen.editor)}
           />
         )}
-        <ActionButton
-          icon="back"
-          label="Voltar à agenda"
-          onPress={() => router.dismissTo('/agenda')}
-        />
       </View>
     </HomeScreen>
   );
@@ -612,6 +614,7 @@ function RecordEditor({
       title={screen.formTitle}
       description={data?.team.name}
       standalone
+      onBack={() => router.dismissTo(screen.list)}
     >
       {state.status === 'loading' && <LoadingMatches />}
       {state.status === 'error' && (
@@ -628,18 +631,12 @@ function RecordEditor({
       {data?.team.isOwner === true && id && !record && (
         <Text style={styles.text}>Cadastro indisponível neste time.</Text>
       )}
-      {available ? (
+      {available && (
         <Editor
           kind={kind}
           team={team}
           record={record}
           records={data.records}
-        />
-      ) : (
-        <ActionButton
-          icon="back"
-          label="Voltar à lista"
-          onPress={() => router.dismissTo(screen.list)}
         />
       )}
     </HomeScreen>

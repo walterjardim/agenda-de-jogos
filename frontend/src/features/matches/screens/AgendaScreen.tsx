@@ -1,9 +1,24 @@
 import { Temporal } from '@js-temporal/polyfill';
-import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
-import { useCallback, useEffect, useState } from 'react';
-import { AppState, Pressable, StyleSheet, Text, View } from 'react-native';
+import { useLocalSearchParams, useRouter } from 'expo-router';
+import {
+  type ComponentRef,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
+import {
+  AppState,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  View,
+  useWindowDimensions,
+} from 'react-native';
 import { CalendarIcon } from '../../../shared/components/CalendarIcon';
 import { theme } from '../../../shared/theme/theme';
+import { useAuth } from '../../auth/AuthContext';
 import { HomeMenu, HomeMenuItem } from '../../home/components/HomeMenu';
 import { ActionButton } from '../../../shared/components/ActionButton';
 import { HomeScreen } from '../../home/components/HomeScreen';
@@ -72,6 +87,24 @@ function WeekCalendar({
   selectDay: (day: string) => void;
 }) {
   const start = Temporal.PlainDate.from(week.from);
+  const { width } = useWindowDimensions();
+  const compact = width < 412;
+  const dayButtons = useRef<(ComponentRef<typeof Pressable> | null)[]>([]);
+  const tabStop = selectedDay ?? week.from;
+
+  function moveDay(
+    event: { nativeEvent: { key: string }; preventDefault: () => void },
+    index: number,
+  ) {
+    const key = event.nativeEvent.key;
+    if (!['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(key))
+      return;
+    event.preventDefault();
+    const step = key === 'ArrowLeft' || key === 'ArrowUp' ? -1 : 1;
+    const next = (index + step + weekdays.length) % weekdays.length;
+    selectDay(start.add({ days: next }).toString());
+    dayButtons.current[next]?.focus();
+  }
   const matchDays = new Set(
     matches.map(({ startsAt }) => gameDate(startsAt, timezone)),
   );
@@ -82,7 +115,11 @@ function WeekCalendar({
         <CalendarIcon size={22} color={theme.colors.white} />
         <Text style={agendaStyles.period}>{week.label}</Text>
       </View>
-      <View style={agendaStyles.days}>
+      <View
+        accessibilityRole="radiogroup"
+        accessibilityLabel="Dia da agenda"
+        style={agendaStyles.days}
+      >
         {weekdays.map((weekday, index) => {
           const date = start.add({ days: index });
           const hasMatch = matchDays.has(date.toString());
@@ -91,12 +128,23 @@ function WeekCalendar({
           return (
             <Pressable
               key={weekday}
-              accessibilityRole="button"
-              accessibilityState={{ selected }}
+              accessibilityRole="radio"
+              accessibilityState={{ checked: selected }}
+              aria-checked={selected}
+              ref={(button) => {
+                dayButtons.current[index] = button;
+              }}
+              {...(Platform.OS === 'web' && {
+                tabIndex: date.toString() === tabStop ? 0 : -1,
+                onKeyDown: (event: Parameters<typeof moveDay>[0]) =>
+                  moveDay(event, index),
+              })}
               onPress={() => selectDay(date.toString())}
-              accessibilityLabel={`${weekday} ${date.day}${isToday ? ', hoje' : ''}${hasMatch ? ', dia de jogo' : ''}`}
-              style={[
+              accessibilityLabel={`${date.toLocaleString('pt-BR', { dateStyle: 'full' })}${isToday ? ', hoje' : ''}${hasMatch ? ', dia de jogo' : ''}`}
+              style={({ pressed }) => [
                 agendaStyles.day,
+                compact && agendaStyles.compactDay,
+                pressed && agendaStyles.pressed,
                 isToday && agendaStyles.today,
                 selected && agendaStyles.selected,
               ]}
@@ -147,7 +195,7 @@ function AgendaMatchCard({
       {today && Boolean(match.location) && (
         <Text style={styles.text}>{match.location}</Text>
       )}
-      <ActionButton label="Ver ficha" primary={today} onPress={onPress} />
+      <ActionButton label="Ver ficha" onPress={onPress} />
     </View>
   );
 }
@@ -245,7 +293,12 @@ function WeeklyAgenda({ id, timezone, token }: AgendaTeam) {
         selectDay={(day) => show(day, day)}
       />
       <View style={agendaStyles.section}>
-        <Text accessibilityRole="header" style={agendaStyles.sectionTitle}>
+        <Text
+          accessibilityRole="header"
+          accessibilityLiveRegion="polite"
+          aria-live="polite"
+          style={agendaStyles.sectionTitle}
+        >
           {selectedDay === today
             ? 'Jogos de hoje'
             : selectedDay
@@ -337,7 +390,35 @@ function WeeklyAgenda({ id, timezone, token }: AgendaTeam) {
 
 export function AgendaScreen() {
   const team = useAgendaTeam();
-  if (!team) return <Redirect href="/buscar" />;
+  const router = useRouter();
+  const { session } = useAuth();
+  if (!team) {
+    return (
+      <HomeScreen title="Agenda">
+        <View style={styles.card}>
+          <Text style={styles.text}>
+            Escolha um time para ver os jogos na agenda.
+          </Text>
+          <ActionButton
+            label="Escolher um time"
+            primary
+            onPress={() => router.navigate('/buscar')}
+          />
+          {session && (
+            <ActionButton
+              label="Cadastrar meu time"
+              onPress={() =>
+                router.navigate({
+                  pathname: '/meus-times',
+                  params: { cadastrar: 'sim' },
+                })
+              }
+            />
+          )}
+        </View>
+      </HomeScreen>
+    );
+  }
   return <WeeklyAgenda key={`${team.id}:${team.timezone}`} {...team} />;
 }
 
@@ -360,9 +441,11 @@ const agendaStyles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
   },
-  days: { flexDirection: 'row', gap: 2 },
+  days: { flexDirection: 'row', flexWrap: 'wrap', gap: 2 },
   day: {
-    flex: 1,
+    flexBasis: 0,
+    flexGrow: 1,
+    minWidth: 48,
     alignItems: 'center',
     minHeight: 48,
     borderWidth: 1,
@@ -371,6 +454,8 @@ const agendaStyles = StyleSheet.create({
     gap: 4,
     borderRadius: 10,
   },
+  compactDay: { flexBasis: '23%' },
+  pressed: { opacity: 0.8 },
   today: { backgroundColor: 'rgba(255, 255, 255, 0.18)' },
   selected: {
     borderColor: theme.colors.white,

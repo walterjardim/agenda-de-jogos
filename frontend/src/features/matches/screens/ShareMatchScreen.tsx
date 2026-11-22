@@ -32,11 +32,9 @@ import { previewMessage } from '../preview';
 function Message({
   text,
   whatsappUrl,
-  onBack,
 }: {
   text: string;
   whatsappUrl: string | null;
-  onBack: () => void;
 }) {
   const [notice, setNotice] = useState('');
 
@@ -91,7 +89,6 @@ function Message({
           label="Copiar texto"
           onPress={() => void copy()}
         />
-        <ActionButton icon="back" label="Voltar à ficha" onPress={onBack} />
       </View>
       {Boolean(notice) && (
         <Text accessibilityLiveRegion="polite" style={styles.text}>
@@ -140,7 +137,13 @@ function ShareMatch({
     type === 'callup';
 
   return (
-    <HomeScreen title="Prévia do compartilhamento" standalone>
+    <HomeScreen
+      title="Prévia do compartilhamento"
+      standalone
+      onBack={() =>
+        router.dismissTo({ pathname: '/jogo/[id]', params: { id } })
+      }
+    >
       <View
         accessibilityRole="radiogroup"
         accessibilityLabel="Tipo de mensagem"
@@ -206,24 +209,8 @@ function ShareMatch({
             key={type}
             text={state.data.text}
             whatsappUrl={state.data.whatsappUrl}
-            onBack={() =>
-              router.dismissTo({ pathname: '/jogo/[id]', params: { id } })
-            }
           />
         )}
-      {!(
-        state.status === 'ready' &&
-        state.data?.type === type &&
-        state.data.text
-      ) && (
-        <ActionButton
-          icon="back"
-          label="Voltar à ficha"
-          onPress={() =>
-            router.dismissTo({ pathname: '/jogo/[id]', params: { id } })
-          }
-        />
-      )}
     </HomeScreen>
   );
 }

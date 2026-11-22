@@ -479,23 +479,18 @@ function MatchEditor({
       title={matchId ? 'Editar jogo' : 'Novo jogo'}
       description={`Data e hora no fuso ${team.timezone}.`}
       standalone
+      onBack={back}
     >
       {state.status === 'loading' && <LoadingMatches />}
       {state.status === 'error' && (
         <MatchLoadError error={state.error} retry={retry} />
       )}
       {unavailable && <Text style={styles.text}>Jogo indisponível.</Text>}
-      {data && !unavailable ? (
+      {data && !unavailable && (
         <MatchForm
           team={team}
           catalog={data.catalog}
           match={data.match ?? undefined}
-        />
-      ) : (
-        <ActionButton
-          icon="back"
-          label={matchId ? 'Voltar à ficha' : 'Voltar à agenda'}
-          onPress={back}
         />
       )}
     </HomeScreen>

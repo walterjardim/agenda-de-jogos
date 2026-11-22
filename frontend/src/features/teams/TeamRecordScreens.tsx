@@ -1,6 +1,6 @@
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { Text, View } from 'react-native';
+import { Text, TextInput, View } from 'react-native';
 import { TableActions } from '../../shared/components/TableActions';
 import { tableStyles as rosterStyles } from '../../shared/theme/table';
 import { FormField } from '../../shared/components/FormInput';
@@ -340,6 +340,20 @@ function Editor({
   const [status, setStatus] = useState<Athlete['status']>(
     athlete?.status ?? 'active',
   );
+  const [fieldError, setFieldError] = useState<{
+    field: 'name' | 'position' | 'shirt';
+    message: string;
+  }>();
+  const nameRef = useRef<TextInput>(null);
+  const positionRef = useRef<TextInput>(null);
+  const shirtRef = useRef<TextInput>(null);
+  function invalid(field: 'name' | 'position' | 'shirt', message: string) {
+    setError('');
+    setFieldError({ field, message });
+    ({ name: nameRef, position: positionRef, shirt: shirtRef })[
+      field
+    ].current?.focus();
+  }
   const [error, setError] = useState('');
   const [confirming, setConfirming] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -360,15 +374,17 @@ function Editor({
 
     if (!removing) {
       if (!cleanName || cleanName.length > nameLimit) {
-        setError(`Informe um nome com 1 a ${nameLimit} caracteres.`);
+        invalid('name', `Informe um nome com 1 a ${nameLimit} caracteres.`);
         return;
       }
 
       if (kind === 'athletes') {
-        if (!cleanPosition || !/^\d{1,3}$/.test(shirt.trim())) {
-          setError(
-            'Informe a posição e um número de camisa inteiro de 0 a 999.',
-          );
+        if (!cleanPosition) {
+          invalid('position', 'Informe uma posição, como Goleiro.');
+          return;
+        }
+        if (!/^\d{1,3}$/.test(shirt.trim())) {
+          invalid('shirt', 'Informe um número inteiro de 0 a 999.');
           return;
         }
         if (
@@ -380,7 +396,7 @@ function Editor({
               item.shirtNumber === shirtNumber,
           )
         ) {
-          setError('Esse número de camisa já está em uso no time.');
+          invalid('shirt', 'Esse número de camisa já está em uso no time.');
           return;
         }
         body = {
@@ -392,6 +408,7 @@ function Editor({
       }
     }
 
+    setFieldError(undefined);
     pending.current = true;
     setBusy(true);
     setError('');
@@ -431,7 +448,7 @@ function Editor({
         failure.status === 409 &&
         kind === 'athletes'
       ) {
-        setError('Esse número de camisa já está em uso no time.');
+        invalid('shirt', 'Esse número de camisa já está em uso no time.');
       } else {
         setError(
           removing
@@ -450,24 +467,45 @@ function Editor({
       <View style={styles.card}>
         <FormField
           label="Nome"
+          ref={nameRef}
+          error={fieldError?.field === 'name' ? fieldError.message : undefined}
           value={name}
           maxLength={kind === 'athletes' ? 80 : 120}
-          onChangeText={setName}
+          onChangeText={(value) => {
+            if (fieldError?.field === 'name') setFieldError(undefined);
+            setName(value);
+          }}
           editable={!busy && !confirming}
         />
         {kind === 'athletes' && (
           <>
             <FormField
               label="Posição"
+              ref={positionRef}
+              error={
+                fieldError?.field === 'position'
+                  ? fieldError.message
+                  : undefined
+              }
               value={position}
-              onChangeText={setPosition}
+              onChangeText={(value) => {
+                if (fieldError?.field === 'position') setFieldError(undefined);
+                setPosition(value);
+              }}
               editable={!busy && !confirming}
             />
             <FormField
               label="Número da camisa"
+              ref={shirtRef}
+              error={
+                fieldError?.field === 'shirt' ? fieldError.message : undefined
+              }
               value={shirt}
               maxLength={3}
-              onChangeText={setShirt}
+              onChangeText={(value) => {
+                if (fieldError?.field === 'shirt') setFieldError(undefined);
+                setShirt(value);
+              }}
               keyboardType="number-pad"
               editable={!busy && !confirming}
             />

@@ -117,3 +117,64 @@ test("agenda filtra o dia no fuso do perfil, pagina empates e exige vínculo", a
   });
   assert.equal(dst.statusCode, 200);
 });
+
+test("repetir um cadastro devolve a mesma partida enquanto o usuário tem acesso", async (t) => {
+  let accessible = true;
+  let insertions = 0;
+  const stored = new Map<string, { id: string; startsAt: Date; _count: { callups: number } }>();
+  const db = {
+    authSession: { findUnique: async () => ({ user: { id: userId } }) },
+    $transaction: async (run: (tx: unknown) => Promise<unknown>) => run({
+      $queryRaw: async () => [{ id: teamId }],
+      team: { findUnique: async () => accessible ? { id: teamId } : null },
+      match: {
+        findFirst: async ({ where }: { where: { teamId: string; createKey: string } }) => {
+          assert.equal(where.teamId, teamId);
+          return stored.get(where.createKey);
+        },
+        create: async ({ data }: { data: { startsAt: Date; createKey: string } }) => {
+          const match = { ...data, id: ++insertions === 1 ? firstId : secondId, _count: { callups: 0 } };
+          stored.set(data.createKey, match);
+          return match;
+        },
+      },
+    }),
+  };
+  const app = buildApp({
+    db: db as unknown as PrismaClient,
+    sessionTtlHours: 1,
+    verifyGoogleIdentity: async () => { throw new Error("unused"); },
+  });
+  t.after(() => app.close());
+
+  const create = (requestId: string) => app.inject({
+    method: "POST",
+    url: `/api/v1/teams/${teamId}/matches`,
+    headers: { authorization: `Bearer ${"a".repeat(43)}` },
+    payload: {
+      requestId,
+      opponent: "Adversário",
+      startsAt: startsAt.toISOString(),
+      shirtPieceId: null,
+      shortsPieceId: null,
+      socksPieceId: null,
+    },
+  });
+
+  const initial = await create("first-attempt");
+  assert.equal(initial.statusCode, 201);
+  assert.equal(initial.json().id, firstId);
+  assert.ok(!("createKey" in initial.json()));
+
+  const retry = await create("first-attempt");
+  assert.equal(retry.statusCode, 201);
+  assert.equal(retry.json().id, firstId);
+
+  const anotherMatch = await create("another-attempt");
+  assert.equal(anotherMatch.statusCode, 201);
+  assert.equal(anotherMatch.json().id, secondId);
+  assert.equal(insertions, 2);
+
+  accessible = false;
+  assert.equal((await create("first-attempt")).statusCode, 404);
+});

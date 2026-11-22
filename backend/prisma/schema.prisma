@@ -112,6 +112,7 @@ model Match {
   shortsPieceId     String?       @map("shorts_piece_id") @db.Uuid
   socksPieceId      String?       @map("socks_piece_id") @db.Uuid
   refereeFeeCents   Int?          @map("referee_fee_cents")
+  createKey         String?       @map("create_key")
   hasSavedCallup    Boolean       @default(false) @map("has_saved_callup")
   team              Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
   competition       Competition? @relation(fields: [competitionId], references: [id], onDelete: SetNull)
@@ -120,6 +121,7 @@ model Match {
   socksPiece        UniformPiece? @relation("MatchSocks", fields: [socksPieceId], references: [id], onDelete: SetNull)
   callups           Callup[]
 
+  @@unique([teamId, createKey], map: "matches_team_id_create_key_key")
   @@index([teamId, startsAt, id], map: "idx_matches_team_date")
   @@map("matches")
 }

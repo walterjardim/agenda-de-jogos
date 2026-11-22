@@ -1,6 +1,13 @@
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { Pressable, StyleSheet, Switch, Text, View } from 'react-native';
+import {
+  Pressable,
+  StyleSheet,
+  Switch,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 import { ActionButton } from '../../shared/components/ActionButton';
 import { TableActions } from '../../shared/components/TableActions';
 import { tableStyles } from '../../shared/theme/table';
@@ -33,12 +40,12 @@ const labels: Record<PieceType, string> = {
 };
 const types = Object.entries(labels).map(([id, label]) => ({ id, label }));
 const palette = [
-  '#1E40AF',
-  '#E2222B',
-  '#FFFFFF',
-  '#000000',
-  '#15803D',
-  '#FACC15',
+  { color: '#1E40AF', name: 'Azul' },
+  { color: '#E2222B', name: 'Vermelho' },
+  { color: '#FFFFFF', name: 'Branco' },
+  { color: '#000000', name: 'Preto' },
+  { color: '#15803D', name: 'Verde' },
+  { color: '#FACC15', name: 'Amarelo' },
 ];
 
 function useUniforms(team: AgendaTeam) {
@@ -63,7 +70,7 @@ function PieceCard({
   return (
     <View style={local.piece}>
       <View
-        accessibilityLabel={`Cor ${piece.colorHex}`}
+        accessibilityLabel={`Cor ${piece.description}`}
         style={[local.swatch, { backgroundColor: piece.colorHex }]}
       />
       <View style={local.details}>
@@ -293,11 +300,20 @@ function UniformForm({
   const [busy, setBusy] = useState(false);
   const [confirming, setConfirming] = useState(false);
   const [error, setError] = useState('');
+  const [customColor, setCustomColor] = useState(false);
+  const [fieldError, setFieldError] = useState<{
+    field: 'uniformName' | 'description' | 'colorHex';
+    message: string;
+  }>();
+  const uniformNameRef = useRef<TextInput>(null);
+  const descriptionRef = useRef<TextInput>(null);
+  const colorHexRef = useRef<TextInput>(null);
   const pending = useRef(false);
   function change<K extends keyof UniformInput>(
     key: K,
     value: UniformInput[K],
   ) {
+    if (fieldError?.field === key) setFieldError(undefined);
     setInput((current) => ({ ...current, [key]: value }));
   }
   async function submit(remove: boolean) {
@@ -308,19 +324,35 @@ function UniformForm({
       description: input.description.trim(),
       colorHex: input.colorHex.trim(),
     };
-    if (
-      !remove &&
-      (!body.uniformName ||
-        body.uniformName.length > 80 ||
-        !body.description ||
-        body.description.length > 80 ||
-        !/^#[0-9a-fA-F]{6}$/.test(body.colorHex))
-    ) {
-      setError(
-        'Informe identificação e descrição com 1 a 80 caracteres e uma cor no formato #RRGGBB.',
-      );
-      return;
+    if (!remove) {
+      const invalid = !body.uniformName
+        ? ({
+            field: 'uniformName',
+            message: 'Informe uma identificação, como Uniforme principal.',
+          } as const)
+        : !body.description
+          ? ({
+              field: 'description',
+              message: 'Informe o nome da cor, como Azul.',
+            } as const)
+          : !/^#[0-9a-fA-F]{6}$/.test(body.colorHex)
+            ? ({
+                field: 'colorHex',
+                message: 'Use o formato hexadecimal, como #1E40AF.',
+              } as const)
+            : undefined;
+      if (invalid) {
+        setError('');
+        setFieldError(invalid);
+        ({
+          uniformName: uniformNameRef,
+          description: descriptionRef,
+          colorHex: colorHexRef,
+        })[invalid.field].current?.focus();
+        return;
+      }
     }
+    setFieldError(undefined);
     pending.current = true;
     setBusy(true);
     setError('');
@@ -377,6 +409,10 @@ function UniformForm({
         )}
         <FormField
           label="Identificação do uniforme"
+          ref={uniformNameRef}
+          error={
+            fieldError?.field === 'uniformName' ? fieldError.message : undefined
+          }
           value={input.uniformName}
           maxLength={80}
           editable={!disabled}
@@ -384,37 +420,36 @@ function UniformForm({
         />
         <FormField
           label="Nome da Cor"
+          ref={descriptionRef}
+          error={
+            fieldError?.field === 'description' ? fieldError.message : undefined
+          }
           value={input.description}
           maxLength={80}
           editable={!disabled}
           onChangeText={(value) => change('description', value)}
-        />
-        <FormField
-          label="Cor hexadecimal"
-          value={input.colorHex}
-          maxLength={7}
-          editable={!disabled}
-          autoCapitalize="characters"
-          autoCorrect={false}
-          onChangeText={(value) => change('colorHex', value)}
         />
         <View
           accessibilityRole="radiogroup"
           accessibilityLabel="Cores sugeridas"
           style={local.colors}
         >
-          {palette.map((color) => (
+          {palette.map(({ color, name }) => (
             <Pressable
               key={color}
               accessibilityRole="radio"
-              accessibilityLabel={`Cor ${color}`}
+              accessibilityLabel={name}
               aria-checked={input.colorHex.toUpperCase() === color}
               accessibilityState={{
                 checked: input.colorHex.toUpperCase() === color,
                 disabled,
               }}
               disabled={disabled}
-              onPress={() => change('colorHex', color)}
+              onPress={() => {
+                change('colorHex', color);
+                change('description', name);
+                setFieldError(undefined);
+              }}
               style={[
                 local.swatch,
                 { backgroundColor: color },
@@ -423,6 +458,48 @@ function UniformForm({
             />
           ))}
         </View>
+        <Text style={styles.text}>
+          Cor selecionada ·{' '}
+          {input.description ||
+            palette.find(({ color }) => color === input.colorHex.toUpperCase())
+              ?.name ||
+            'Personalizada'}
+        </Text>
+        <ActionButton
+          label={
+            customColor ? 'Ocultar ajuste de cor' : 'Ajustar cor manualmente'
+          }
+          disabled={disabled}
+          onPress={() => {
+            if (
+              customColor &&
+              !/^#[0-9a-fA-F]{6}$/.test(input.colorHex.trim())
+            ) {
+              setFieldError({
+                field: 'colorHex',
+                message: 'Use o formato hexadecimal, como #1E40AF.',
+              });
+              colorHexRef.current?.focus();
+              return;
+            }
+            setCustomColor(!customColor);
+          }}
+        />
+        {customColor && (
+          <FormField
+            label="Cor hexadecimal"
+            ref={colorHexRef}
+            error={
+              fieldError?.field === 'colorHex' ? fieldError.message : undefined
+            }
+            value={input.colorHex}
+            maxLength={7}
+            editable={!disabled}
+            autoCapitalize="characters"
+            autoCorrect={false}
+            onChangeText={(value) => change('colorHex', value)}
+          />
+        )}
       </View>
       <View style={styles.card}>
         {(['isHomeDefault', 'isAwayDefault'] as const).map((flag) => (

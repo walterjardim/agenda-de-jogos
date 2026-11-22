@@ -23,6 +23,7 @@ export function ChooseTeamScreen({
   const [input, setInput] = useState('');
   const [query, setQuery] = useState('');
   const [cursor, setCursor] = useState<string>();
+  const [followTarget, setFollowTarget] = useState<string>();
   const [busy, setBusy] = useState<string>();
   const pending = useRef(false);
   const [error, setError] = useState('');
@@ -30,7 +31,8 @@ export function ChooseTeamScreen({
     () => searchTeams(token, query, mine, cursor),
     [token, query, mine, cursor],
   );
-  const { state, retry } = useMatchResource(load);
+  const { state, retry, refreshing } = useMatchResource(load, true);
+  const firstTeam = !session?.user.activeTeamId && !mine;
 
   async function choose(id: string) {
     if (pending.current) return;
@@ -76,7 +78,7 @@ export function ChooseTeamScreen({
   }
 
   function search() {
-    if (busy) return;
+    if (busy || (!mine && input.trim().length < 2)) return;
     setQuery(input.trim());
     setCursor(undefined);
     setError('');
@@ -93,6 +95,17 @@ export function ChooseTeamScreen({
           : 'Encontre um time pelo nome e siga para acessar seus jogos.'
       }
     >
+      {firstTeam && (
+        <ActionButton
+          label="Cadastrar meu time"
+          onPress={() =>
+            router.navigate({
+              pathname: '/meus-times',
+              params: { cadastrar: 'sim' },
+            })
+          }
+        />
+      )}
       <View style={styles.card}>
         <FormInput
           accessibilityLabel="Nome do time"
@@ -118,13 +131,16 @@ export function ChooseTeamScreen({
           {error}
         </Text>
       )}
-      {state.status === 'loading' && (
+      {(state.status === 'loading' || refreshing) && (
         <Text style={styles.text}>Carregando times…</Text>
       )}
       {state.status === 'error' && (
-        <Text accessibilityLiveRegion="polite" style={styles.text}>
-          Não foi possível carregar os times. Tente novamente.
-        </Text>
+        <View style={styles.card}>
+          <Text accessibilityLiveRegion="polite" style={styles.text}>
+            Não foi possível carregar os times.
+          </Text>
+          <ActionButton label="Tentar novamente" onPress={retry} />
+        </View>
       )}
       {state.status === 'ready' && (
         <>
@@ -170,8 +186,29 @@ export function ChooseTeamScreen({
                   label={busy === team.id ? 'Seguindo…' : 'Seguir'}
                   primary
                   disabled={!!busy}
-                  onPress={() => void follow(team.id)}
+                  onPress={() => setFollowTarget(team.id)}
                 />
+              )}
+              {followTarget === team.id && (
+                <View style={styles.row}>
+                  <Text style={styles.text}>
+                    Ao seguir, você pode acompanhar, cadastrar, editar e excluir
+                    jogos na agenda compartilhada deste time.
+                  </Text>
+                  <ActionButton
+                    label="Confirmar que quero seguir"
+                    primary
+                    disabled={!!busy}
+                    onPress={() => {
+                      setFollowTarget(undefined);
+                      void follow(team.id);
+                    }}
+                  />
+                  <ActionButton
+                    label="Cancelar"
+                    onPress={() => setFollowTarget(undefined)}
+                  />
+                </View>
               )}
             </View>
           ))}
@@ -197,7 +234,7 @@ export function ChooseTeamScreen({
         <ActionButton
           icon="refresh"
           label="Atualizar lista"
-          disabled={!!busy || state.status === 'loading'}
+          disabled={!!busy || refreshing || state.status === 'loading'}
           onPress={retry}
         />
         {mine && (

@@ -1,7 +1,7 @@
 import { useRouter } from 'expo-router';
 import { type ReactNode, useRef, useState } from 'react';
 import { StyleSheet, Text, View } from 'react-native';
-import { FormField, FormInput } from '../../../shared/components/FormInput';
+import { FormInput } from '../../../shared/components/FormInput';
 import { surfaces } from '../../../shared/theme/surfaces';
 import { TeamIdentity } from '../../teams/TeamIdentity';
 import { theme } from '../../../shared/theme/theme';
@@ -14,6 +14,7 @@ import { usePreview } from '../PreviewContext';
 import { previewTeam as team, previewTimezone } from '../../matches/preview';
 import { ActionButton } from '../../../shared/components/ActionButton';
 import { HomeScreen } from '../components/HomeScreen';
+import { TimezonePicker } from '../components/TimezonePicker';
 import { TabIcon } from '../components/TabIcon';
 
 function ChoosePreviewTeam() {
@@ -178,7 +179,7 @@ function AccountProfile({ user }: { user: Profile }) {
         );
       } else if (error instanceof ApiError && error.status === 400) {
         setNotice(
-          'Informe um fuso horário IANA válido, como America/Sao_Paulo.',
+          'O fuso selecionado está indisponível. Escolha outra cidade ou região.',
         );
       } else {
         setNotice('Não foi possível salvar o fuso horário. Tente novamente.');
@@ -204,13 +205,10 @@ function AccountProfile({ user }: { user: Profile }) {
         </View>
       </View>
       <View style={styles.card}>
-        <FormField
-          label="Fuso horário"
-          autoCapitalize="none"
-          autoCorrect={false}
-          editable={!busy}
+        <TimezonePicker
           value={timezone}
-          onChangeText={setTimezone}
+          disabled={busy}
+          onChange={setTimezone}
         />
         <ActionButton
           label="Salvar"

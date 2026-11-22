@@ -5,7 +5,13 @@ import { surfaces } from '../../../shared/theme/surfaces';
 import { theme } from '../../../shared/theme/theme';
 import { Brand } from '../components/Brand';
 
-export function SessionStatusScreen({ retry }: { retry?: () => void }) {
+export function SessionStatusScreen({
+  retry,
+  onLogin,
+}: {
+  retry?: () => void;
+  onLogin: () => void;
+}) {
   return (
     <SafeAreaView style={styles.screen}>
       <View style={[surfaces.card, styles.card]}>
@@ -21,6 +27,7 @@ export function SessionStatusScreen({ retry }: { retry?: () => void }) {
               primary
               fullWidth
             />
+            <ActionButton label="Voltar ao login" onPress={onLogin} fullWidth />
           </>
         ) : (
           <>

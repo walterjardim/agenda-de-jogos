@@ -178,7 +178,8 @@ function MatchSheet({ id, team }: { id: string; team: AgendaTeam }) {
           {confirming && (
             <View style={[styles.card, styles.highlighted]}>
               <Text style={styles.label}>
-                Excluir este jogo e sua convocação?
+                Excluir este jogo e sua convocação da agenda do time? A exclusão
+                afeta todas as pessoas que acompanham a equipe.
               </Text>
               {Boolean(error) && (
                 <Text accessibilityLiveRegion="polite" style={styles.error}>

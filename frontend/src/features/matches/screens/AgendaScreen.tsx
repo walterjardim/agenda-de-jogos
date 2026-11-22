@@ -1,7 +1,7 @@
 import { Temporal } from '@js-temporal/polyfill';
-import { Redirect, useRouter } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { AppState, StyleSheet, Text, View } from 'react-native';
+import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
+import { AppState, Pressable, StyleSheet, Text, View } from 'react-native';
 import { CalendarIcon } from '../../../shared/components/CalendarIcon';
 import { theme } from '../../../shared/theme/theme';
 import { HomeMenu, HomeMenuItem } from '../../home/components/HomeMenu';
@@ -16,6 +16,7 @@ import {
 } from '../components/MatchViews';
 import { type AgendaTeam, useAgendaTeam, useMatchResource } from '../hooks';
 import {
+  formatDate,
   formatGameTime,
   gameDate,
   gamesInWeek,
@@ -60,11 +61,15 @@ function WeekCalendar({
   today,
   timezone,
   matches,
+  selectedDay,
+  selectDay,
 }: {
   week: ReturnType<typeof weekInTimezone>;
   today: string;
   timezone: string;
   matches: Match[];
+  selectedDay: string | null;
+  selectDay: (day: string) => void;
 }) {
   const start = Temporal.PlainDate.from(week.from);
   const matchDays = new Set(
@@ -82,19 +87,26 @@ function WeekCalendar({
           const date = start.add({ days: index });
           const hasMatch = matchDays.has(date.toString());
           const isToday = date.toString() === today;
+          const selected = date.toString() === selectedDay;
           return (
-            <View
+            <Pressable
               key={weekday}
-              accessible
+              accessibilityRole="button"
+              accessibilityState={{ selected }}
+              onPress={() => selectDay(date.toString())}
               accessibilityLabel={`${weekday} ${date.day}${isToday ? ', hoje' : ''}${hasMatch ? ', dia de jogo' : ''}`}
-              style={[agendaStyles.day, isToday && agendaStyles.today]}
+              style={[
+                agendaStyles.day,
+                isToday && agendaStyles.today,
+                selected && agendaStyles.selected,
+              ]}
             >
               <Text style={agendaStyles.weekday}>{weekday}</Text>
               <Text style={agendaStyles.dayNumber}>{date.day}</Text>
               <View
                 style={[agendaStyles.dot, hasMatch && agendaStyles.matchDot]}
               />
-            </View>
+            </Pressable>
           );
         })}
       </View>
@@ -140,17 +152,43 @@ function AgendaMatchCard({
   );
 }
 
+function parseAgendaDay(day?: string) {
+  if (typeof day !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(day)) return;
+  try {
+    return Temporal.PlainDate.from(day).toString();
+  } catch {
+    return undefined;
+  }
+}
+
 function WeeklyAgenda({ id, timezone, token }: AgendaTeam) {
   const router = useRouter();
   const today = useLocalDay(timezone);
-  const week = useMemo(
-    () =>
-      weekInTimezone(
-        timezone,
-        Temporal.PlainDate.from(today).toZonedDateTime(timezone).toInstant(),
-      ),
-    [timezone, today],
+  const { dia, jogo } = useLocalSearchParams<{ dia?: string; jogo?: string }>();
+  const routeKey = `${dia ?? ''}:${jogo ?? ''}`;
+  const [selection, setSelection] = useState<{
+    anchor: string;
+    day: string | null;
+    routeKey: string;
+  }>();
+  const routeDay = parseAgendaDay(dia) ?? today;
+  const current = selection?.routeKey === routeKey ? selection : undefined;
+  const anchor = current?.anchor ?? routeDay;
+  const selectedDay = current ? current.day : routeDay;
+
+  function show(anchor: string, day: string | null) {
+    setSelection({ anchor, day, routeKey });
+  }
+
+  function moveWeek(weeks: number) {
+    const next = Temporal.PlainDate.from(week.from).add({ weeks }).toString();
+    show(next, null);
+  }
+  const week = weekInTimezone(
+    timezone,
+    Temporal.PlainDate.from(anchor).toZonedDateTime(timezone).toInstant(),
   );
+  const { from, to, label } = week;
   const { previewMatches } = usePreview();
   const loadTeam = useCallback(
     async () => (token ? fetchTeam(id, token) : previewTeam),
@@ -160,21 +198,23 @@ function WeeklyAgenda({ id, timezone, token }: AgendaTeam) {
   const selectedTeam =
     teamResource.state.status === 'ready' ? teamResource.state.data : null;
   const load = useCallback(async () => {
+    const requestedWeek = { from, to, label };
     const matches = token
-      ? await fetchWeek(id, token, week.from, week.to)
+      ? await fetchWeek(id, token, from, to)
       : previewMatches;
-    return { week, matches: gamesInWeek(matches, week, timezone) };
-  }, [id, previewMatches, timezone, token, week]);
+    return {
+      week: requestedWeek,
+      matches: gamesInWeek(matches, requestedWeek, timezone),
+    };
+  }, [id, previewMatches, timezone, token, from, to, label]);
   const { state, retry } = useMatchResource(load);
   const data =
     state.status === 'ready' && state.data.week.from === week.from
       ? state.data
       : null;
-  const todayMatches = data?.matches.filter(
-    ({ startsAt }) => gameDate(startsAt, timezone) === today,
-  );
-  const otherMatches = data?.matches.filter(
-    ({ startsAt }) => gameDate(startsAt, timezone) !== today,
+  const visibleMatches = data?.matches.filter(
+    ({ startsAt }) =>
+      !selectedDay || gameDate(startsAt, timezone) === selectedDay,
   );
   const teamName = selectedTeam?.name ?? 'Time';
 
@@ -191,35 +231,54 @@ function WeeklyAgenda({ id, timezone, token }: AgendaTeam) {
           : undefined
       }
     >
+      <View style={styles.row}>
+        <ActionButton label="Semana anterior" onPress={() => moveWeek(-1)} />
+        <ActionButton label="Hoje" onPress={() => show(today, today)} />
+        <ActionButton label="Próxima semana" onPress={() => moveWeek(1)} />
+      </View>
       <WeekCalendar
         week={week}
         today={today}
         timezone={timezone}
         matches={data?.matches ?? []}
+        selectedDay={selectedDay}
+        selectDay={(day) => show(day, day)}
       />
       <View style={agendaStyles.section}>
         <Text accessibilityRole="header" style={agendaStyles.sectionTitle}>
-          Jogos do dia
+          {selectedDay === today
+            ? 'Jogos de hoje'
+            : selectedDay
+              ? `Jogos de ${formatDate(Temporal.PlainDate.from(selectedDay))}`
+              : 'Jogos da semana'}
         </Text>
+        {selectedDay && (
+          <ActionButton
+            label="Ver todos da semana"
+            onPress={() => show(anchor, null)}
+          />
+        )}
         {(state.status === 'loading' ||
           (state.status === 'ready' && !data)) && <LoadingMatches />}
         {state.status === 'error' && (
           <MatchLoadError error={state.error} retry={retry} />
         )}
-        {todayMatches?.length === 0 && (
+        {visibleMatches?.length === 0 && (
           <View style={[styles.card, agendaStyles.card]}>
             <Text accessibilityLiveRegion="polite" style={styles.text}>
-              Nenhum jogo hoje.
+              {selectedDay
+                ? 'Nenhum jogo nesta data.'
+                : 'Nenhum jogo nesta semana.'}
             </Text>
           </View>
         )}
-        {todayMatches?.map((match) => (
+        {visibleMatches?.map((match) => (
           <AgendaMatchCard
             key={match.id}
             match={match}
             teamName={teamName}
             timezone={timezone}
-            today
+            today={gameDate(match.startsAt, timezone) === today}
             onPress={() => openMatch(match.id)}
           />
         ))}
@@ -272,31 +331,6 @@ function WeeklyAgenda({ id, timezone, token }: AgendaTeam) {
           <ActionButton label="Recarregar time" onPress={teamResource.retry} />
         </>
       )}
-      {data && (
-        <View style={agendaStyles.section}>
-          <Text accessibilityRole="header" style={agendaStyles.sectionTitle}>
-            Demais jogos da semana
-          </Text>
-          {otherMatches?.length === 0 && (
-            <View style={[styles.card, agendaStyles.card]}>
-              <Text accessibilityLiveRegion="polite" style={styles.text}>
-                {data.matches.length
-                  ? 'Nenhum outro jogo nesta semana.'
-                  : 'Nenhum jogo nesta semana.'}
-              </Text>
-            </View>
-          )}
-          {otherMatches?.map((match) => (
-            <AgendaMatchCard
-              key={match.id}
-              match={match}
-              teamName={teamName}
-              timezone={timezone}
-              onPress={() => openMatch(match.id)}
-            />
-          ))}
-        </View>
-      )}
     </HomeScreen>
   );
 }
@@ -330,11 +364,18 @@ const agendaStyles = StyleSheet.create({
   day: {
     flex: 1,
     alignItems: 'center',
+    minHeight: 48,
+    borderWidth: 1,
+    borderColor: 'transparent',
     paddingVertical: 8,
     gap: 4,
     borderRadius: 10,
   },
   today: { backgroundColor: 'rgba(255, 255, 255, 0.18)' },
+  selected: {
+    borderColor: theme.colors.white,
+    backgroundColor: 'rgba(255, 255, 255, 0.25)',
+  },
   weekday: { color: theme.colors.white, fontSize: 11 },
   dayNumber: { color: theme.colors.white, fontSize: 16, fontWeight: '800' },
   dot: { width: 5, height: 5, borderRadius: 3 },

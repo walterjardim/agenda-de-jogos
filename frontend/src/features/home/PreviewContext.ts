@@ -25,7 +25,7 @@ type Preview = {
     id?: string,
   ) => void;
   deletePreviewRecord: (kind: 'athletes' | 'competitions', id: string) => void;
-  addPreviewMatch: (input: MatchInput) => void;
+  addPreviewMatch: (input: MatchInput) => string;
   changePreviewMatch: (
     id: string,
     change: (match: MatchDetail) => MatchDetail | null,

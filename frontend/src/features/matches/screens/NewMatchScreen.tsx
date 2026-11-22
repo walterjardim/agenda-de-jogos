@@ -1,8 +1,9 @@
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { Text, View } from 'react-native';
+import { Text, TextInput, View } from 'react-native';
 import { FormField } from '../../../shared/components/FormInput';
 import { ApiError } from '../../auth/api';
+import { useDiscardChanges } from '../../../shared/components/useDiscardChanges';
 import { useAuth } from '../../auth/AuthContext';
 import { ActionButton } from '../../../shared/components/ActionButton';
 import { HomeScreen } from '../../home/components/HomeScreen';
@@ -32,7 +33,7 @@ import {
   parseFee,
   parseStart,
   pieceLabel,
-  weekInTimezone,
+  gameDate,
 } from '../model';
 import { previewCatalog, previewMatch } from '../preview';
 
@@ -90,9 +91,22 @@ function MatchForm({
   const [original] = useState(() => initialDraft(team.timezone, match));
   const [draft, setDraft] = useState(original);
   const [error, setError] = useState('');
-  const [savedOutsideWeek, setSavedOutsideWeek] = useState(false);
+  const [saved, setSaved] = useState<{ id: string; day: string }>();
+  const [fieldError, setFieldError] = useState<{
+    field: 'opponent' | 'date' | 'time' | 'fee';
+    message: string;
+  }>();
+  const opponentRef = useRef<TextInput>(null);
+  const dateRef = useRef<TextInput>(null);
+  const timeRef = useRef<TextInput>(null);
+  const feeRef = useRef<TextInput>(null);
+  const createAttempt = useRef<{ payload: string; id: string }>(undefined);
   const [busy, setBusy] = useState(false);
   const pending = useRef(false);
+  const { allowExit, confirmation } = useDiscardChanges(
+    !saved && JSON.stringify(draft) !== JSON.stringify(original),
+    busy,
+  );
   const startsAt =
     match && draft.date === original.date && draft.time === original.time
       ? match.startsAt
@@ -105,6 +119,7 @@ function MatchForm({
   }
 
   function update<K extends keyof Draft>(key: K, value: Draft[K]) {
+    if (fieldError?.field === key) setFieldError(undefined);
     setDraft((current) => ({ ...current, [key]: value }));
   }
 
@@ -114,16 +129,33 @@ function MatchForm({
     const fee = parseFee(draft.fee);
 
     if (!opponent || !startsAt || fee === undefined) {
-      setError(
-        !opponent
-          ? 'Informe o adversário.'
-          : !startsAt
-            ? 'Informe uma data e hora válidas no fuso do perfil.'
-            : 'Informe uma taxa válida com até duas casas decimais.',
-      );
+      setError('');
+      if (!opponent) {
+        setFieldError({ field: 'opponent', message: 'Informe o adversário.' });
+        opponentRef.current?.focus();
+      } else if (!startsAt && !parseStart(draft.date, '12:00', team.timezone)) {
+        setFieldError({
+          field: 'date',
+          message: 'Informe uma data válida, como 25/11/2026.',
+        });
+        dateRef.current?.focus();
+      } else if (!startsAt) {
+        setFieldError({
+          field: 'time',
+          message: 'Informe uma hora válida no fuso do perfil, como 19:30.',
+        });
+        timeRef.current?.focus();
+      } else {
+        setFieldError({
+          field: 'fee',
+          message: 'Informe uma taxa como 15,00.',
+        });
+        feeRef.current?.focus();
+      }
       return;
     }
 
+    setFieldError(undefined);
     const body: MatchInput = {
       opponent,
       startsAt,
@@ -172,20 +204,25 @@ function MatchForm({
               ),
             );
         }
+        allowExit();
         back();
         return;
       }
 
-      if (team.token) await createMatch(team.id, team.token, body);
-      else addPreviewMatch(body);
-
-      const week = weekInTimezone(team.timezone);
-      const date = draft.date.split('/').reverse().join('-');
-      if (date < week.from || date > week.to) {
-        setSavedOutsideWeek(true);
-      } else {
-        router.dismissTo('/agenda');
+      const payload = JSON.stringify(body);
+      if (createAttempt.current?.payload !== payload) {
+        createAttempt.current = {
+          payload,
+          id: `${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`,
+        };
       }
+      const created = team.token
+        ? await createMatch(team.id, team.token, body, createAttempt.current.id)
+        : { id: addPreviewMatch(body), startsAt };
+      setSaved({
+        id: created.id,
+        day: gameDate(created.startsAt, team.timezone),
+      });
     } catch (failure) {
       if (team.token && failure instanceof ApiError && failure.status === 401) {
         await invalidateSession(team.token);
@@ -196,7 +233,7 @@ function MatchForm({
           ? 'Confira os campos e as opções selecionadas.'
           : match
             ? 'Não foi possível confirmar a edição. Confira a ficha antes de tentar novamente.'
-            : 'Não foi possível confirmar o cadastro. Confira a agenda antes de tentar novamente.',
+            : 'Não foi possível confirmar o cadastro. Tente novamente com os mesmos dados para evitar duplicidade.',
       );
     } finally {
       pending.current = false;
@@ -204,16 +241,27 @@ function MatchForm({
     }
   }
 
-  if (savedOutsideWeek) {
+  if (saved) {
     return (
       <>
         <Text accessibilityLiveRegion="polite" style={styles.text}>
-          Jogo salvo para {draft.date}, fora da semana exibida na agenda.
+          Jogo salvo para {saved.day.split('-').reverse().join('/')}.
         </Text>
         <ActionButton
-          icon="back"
-          label="Voltar à agenda"
-          onPress={() => router.dismissTo('/agenda')}
+          primary
+          label="Ver ficha"
+          onPress={() =>
+            router.replace({ pathname: '/jogo/[id]', params: { id: saved.id } })
+          }
+        />
+        <ActionButton
+          label="Ir para a semana do jogo"
+          onPress={() =>
+            router.dismissTo({
+              pathname: '/agenda',
+              params: { dia: saved.day, jogo: saved.id },
+            })
+          }
         />
       </>
     );
@@ -227,6 +275,10 @@ function MatchForm({
         </Text>
         <FormField
           label="Adversário"
+          ref={opponentRef}
+          error={
+            fieldError?.field === 'opponent' ? fieldError.message : undefined
+          }
           value={draft.opponent}
           onChangeText={(v) => update('opponent', v)}
           maxLength={120}
@@ -234,6 +286,8 @@ function MatchForm({
         />
         <FormField
           label="Data do jogo"
+          ref={dateRef}
+          error={fieldError?.field === 'date' ? fieldError.message : undefined}
           placeholder="DD/MM/AAAA"
           value={draft.date}
           maxLength={10}
@@ -242,6 +296,8 @@ function MatchForm({
         />
         <FormField
           label="Hora do jogo"
+          ref={timeRef}
+          error={fieldError?.field === 'time' ? fieldError.message : undefined}
           placeholder="HH:MM"
           value={draft.time}
           keyboardType="number-pad"
@@ -341,6 +397,8 @@ function MatchForm({
         </Text>
         <FormField
           label="Taxa por atleta (R$)"
+          ref={feeRef}
+          error={fieldError?.field === 'fee' ? fieldError.message : undefined}
           placeholder="Ex.: 15,00"
           keyboardType="decimal-pad"
           value={draft.fee}
@@ -357,6 +415,7 @@ function MatchForm({
           onChangeText={(v) => update('notes', v)}
         />
       </View>
+      {confirmation}
       {Boolean(error) && (
         <Text accessibilityLiveRegion="polite" style={styles.error}>
           {error}

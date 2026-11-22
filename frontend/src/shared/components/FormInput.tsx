@@ -1,5 +1,6 @@
-import { useState } from 'react';
+import { type Ref, useState } from 'react';
 import {
+  type TextInput as InputRef,
   StyleSheet,
   Text,
   TextInput,
@@ -15,7 +16,7 @@ export function FormInput({
   onFocus,
   onBlur,
   ...props
-}: TextInputProps) {
+}: TextInputProps & { ref?: Ref<InputRef> }) {
   const [focused, setFocused] = useState(false);
 
   return (
@@ -44,12 +45,23 @@ export function FormInput({
 
 export function FormField({
   label,
+  error,
+  style,
   ...props
-}: TextInputProps & { label: string }) {
+}: TextInputProps & { label: string; error?: string; ref?: Ref<InputRef> }) {
   return (
     <View style={surfaces.field}>
       <Text style={surfaces.label}>{label}</Text>
-      <FormInput accessibilityLabel={label} {...props} />
+      <FormInput
+        accessibilityLabel={error ? `${label}. ${error}` : label}
+        {...props}
+        style={[style, error && styles.invalid]}
+      />
+      {error && (
+        <Text accessibilityLiveRegion="polite" style={surfaces.error}>
+          {error}
+        </Text>
+      )}
     </View>
   );
 }
@@ -60,5 +72,6 @@ const styles = StyleSheet.create({
     borderColor: theme.colors.accent,
     backgroundColor: theme.colors.accentSurface,
   },
+  invalid: { borderColor: theme.colors.accent, borderWidth: 2 },
   disabled: { opacity: 0.65 },
 });

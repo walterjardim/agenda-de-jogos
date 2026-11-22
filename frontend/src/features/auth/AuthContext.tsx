@@ -26,6 +26,7 @@ type Auth = {
   restoring: boolean;
   restoreFailed: boolean;
   retryRestore: () => void;
+  returnToLogin: () => void;
   invalidateSession: (token: string) => Promise<void>;
   signIn: (idToken: string) => Promise<void>;
   signOut: () => Promise<void>;
@@ -243,6 +244,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         restoring: restoreState === 'loading',
         restoreFailed: restoreState === 'error',
         retryRestore,
+        returnToLogin: () => setRestoreState('ready'),
         invalidateSession: endSession,
         signIn,
         signOut,

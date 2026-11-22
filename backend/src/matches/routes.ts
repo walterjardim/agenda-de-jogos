@@ -110,6 +110,7 @@ const detailInclude = {
 function serializeMatch({
   _count,
   hasSavedCallup: _hasSavedCallup,
+  createKey: _createKey,
   ...match
 }: Prisma.MatchGetPayload<{ include: typeof matchInclude }>) {
   return {
@@ -335,12 +336,25 @@ export async function matchRoutes(
   app.post("/teams/:teamId/matches", async (request, reply) => {
     const { user } = await auth.requireSession(request.headers.authorization);
     const { teamId } = parseBody(teamParams, request.params);
-    const input = parseBody(matchBody, request.body);
+    const { requestId, ...input } = parseBody(
+      matchBody.extend({
+        requestId: z.string().regex(/^[a-z0-9-]{1,80}$/).optional(),
+      }),
+      request.body,
+    );
+    const createKey = requestId ? `${user.id}:${requestId}` : undefined;
     const match = await db.$transaction(async (tx) => {
       if (!(await lockAccessibleTeam(tx, teamId, user.id))) throw missingTeam();
+      if (createKey) {
+        const existing = await tx.match.findFirst({
+          where: { teamId, createKey },
+          include: matchInclude,
+        });
+        if (existing) return existing;
+      }
       const pieces = await matchReferences(tx, teamId, input, true);
       return tx.match.create({
-        data: { ...input, ...pieces, teamId },
+        data: { ...input, ...pieces, teamId, createKey },
         include: matchInclude,
       });
     });

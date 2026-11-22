@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
-import { useIsFocused, useRouter } from 'expo-router';
-import { Text, View } from 'react-native';
+import { useIsFocused, useLocalSearchParams, useRouter } from 'expo-router';
+import { Text, TextInput, View } from 'react-native';
 import { FormField } from '../../shared/components/FormInput';
 import { surfaces as styles } from '../../shared/theme/surfaces';
 import { TeamIdentity } from './TeamIdentity';
@@ -26,6 +26,7 @@ const fields = [
 
 export function ManageTeamsScreen({ token }: { token: string }) {
   const router = useRouter();
+  const { cadastrar } = useLocalSearchParams<{ cadastrar?: string }>();
   const focused = useIsFocused();
   const { session, chooseTeam, invalidateSession, clearDeletedTeam } =
     useAuth();
@@ -33,13 +34,36 @@ export function ManageTeamsScreen({ token }: { token: string }) {
   const [loading, setLoading] = useState(true);
   const [loadFailed, setLoadFailed] = useState(false);
   const [attempt, setAttempt] = useState(0);
-  const [form, setForm] = useState<TeamInput | null>(null);
+  const [form, setForm] = useState<TeamInput | null>(
+    cadastrar === 'sim' ? empty : null,
+  );
+  const [savedTeam, setSavedTeam] = useState<string>();
+  const [missing, setMissing] = useState<keyof TeamInput>();
+  const fieldRefs = useRef<Partial<Record<keyof TeamInput, TextInput | null>>>(
+    {},
+  );
+
   const [editingId, setEditingId] = useState<string>();
   const [confirmDelete, setConfirmDelete] = useState<string>();
   const [confirmUnfollow, setConfirmUnfollow] = useState<string>();
   const [notice, setNotice] = useState('');
   const [busy, setBusy] = useState(false);
   const pending = useRef(false);
+
+  const [previousCreateParam, setPreviousCreateParam] = useState(cadastrar);
+  if (previousCreateParam !== cadastrar) {
+    setPreviousCreateParam(cadastrar);
+    if (cadastrar === 'sim') {
+      setForm(empty);
+      setEditingId(undefined);
+      setMissing(undefined);
+      setNotice('');
+    }
+  }
+
+  useEffect(() => {
+    if (focused && cadastrar === 'sim') router.setParams({ cadastrar: '' });
+  }, [cadastrar, focused, router]);
 
   useEffect(() => {
     if (!focused) return;
@@ -65,6 +89,8 @@ export function ManageTeamsScreen({ token }: { token: string }) {
   }, [token, attempt, invalidateSession, focused]);
 
   function edit(team?: TeamSummary) {
+    setMissing(undefined);
+    setSavedTeam(undefined);
     setEditingId(team?.id);
     setForm(
       team
@@ -78,8 +104,15 @@ export function ManageTeamsScreen({ token }: { token: string }) {
 
   async function submit(removeId?: string) {
     if (pending.current) return;
-    if (!removeId && (!form || fields.some(({ key }) => !form[key].trim())))
+    if (!removeId && !form) return;
+    const missingField =
+      !removeId && form && fields.find(({ key }) => !form[key].trim());
+    if (missingField) {
+      setMissing(missingField.key);
+      fieldRefs.current[missingField.key]?.focus();
       return;
+    }
+    setMissing(undefined);
     pending.current = true;
     setBusy(true);
     setNotice('');
@@ -119,6 +152,7 @@ export function ManageTeamsScreen({ token }: { token: string }) {
         setForm(null);
         setEditingId(undefined);
         setNotice('Time salvo.');
+        if (!editingId && !session?.user.activeTeamId) setSavedTeam(saved.id);
       }
     } catch (error) {
       if (error instanceof ApiError && error.status === 401) {
@@ -200,6 +234,14 @@ export function ManageTeamsScreen({ token }: { token: string }) {
           {notice}
         </Text>
       )}
+      {savedTeam && !session?.user.activeTeamId && (
+        <ActionButton
+          primary
+          label="Abrir agenda"
+          disabled={busy}
+          onPress={() => void choose(savedTeam)}
+        />
+      )}
       {form ? (
         <View style={styles.card}>
           <Text style={styles.title}>
@@ -209,12 +251,21 @@ export function ManageTeamsScreen({ token }: { token: string }) {
             <FormField
               key={key}
               label={label}
+              ref={(input) => {
+                fieldRefs.current[key] = input;
+              }}
+              error={
+                missing === key
+                  ? `Preencha o campo ${label.toLowerCase()}.`
+                  : undefined
+              }
               value={form[key]}
               maxLength={limit}
               editable={!busy}
-              onChangeText={(value) =>
-                setForm((current) => current && { ...current, [key]: value })
-              }
+              onChangeText={(value) => {
+                if (missing === key) setMissing(undefined);
+                setForm((current) => current && { ...current, [key]: value });
+              }}
             />
           ))}
           <View style={styles.row}>
@@ -222,7 +273,7 @@ export function ManageTeamsScreen({ token }: { token: string }) {
               icon="save"
               label={busy ? 'Salvando…' : 'Salvar time'}
               primary
-              disabled={busy || fields.some(({ key }) => !form[key].trim())}
+              disabled={busy}
               onPress={() => void submit()}
             />
             <ActionButton

@@ -186,9 +186,18 @@ function ShareMatch({
         (state.status === 'ready' &&
           state.data?.type === type &&
           !state.data.text)) && (
-        <Text style={styles.text}>
-          Selecione pelo menos um atleta para compartilhar a convocação.
-        </Text>
+        <View style={styles.card}>
+          <Text style={styles.text}>
+            Selecione pelo menos um atleta para compartilhar a convocação.
+          </Text>
+          <ActionButton
+            primary
+            label="Montar convocação"
+            onPress={() =>
+              router.dismissTo({ pathname: '/convocacao/[id]', params: { id } })
+            }
+          />
+        </View>
       )}
       {state.status === 'ready' &&
         state.data?.type === type &&

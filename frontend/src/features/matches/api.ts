@@ -72,11 +72,12 @@ export async function createMatch(
   teamId: string,
   token: string,
   body: MatchInput,
+  requestId: string,
 ): Promise<Match> {
   return request(`${teamPath(teamId)}/matches`, {
     method: 'POST',
     token,
-    body,
+    body: { ...body, requestId },
   });
 }
 

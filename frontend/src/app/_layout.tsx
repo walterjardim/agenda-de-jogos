@@ -7,7 +7,8 @@ import { PreviewContext } from '../features/home/PreviewContext';
 import { usePreviewTeamData } from '../features/home/usePreviewTeamData';
 
 function Navigation() {
-  const { session, restoring, restoreFailed, retryRestore } = useAuth();
+  const { session, restoring, restoreFailed, retryRestore, returnToLogin } =
+    useAuth();
   const [previewOpen, setPreviewOpen] = useState(false);
   const [followingAjax, setFollowingAjax] = useState(false);
   const [selectedPreviewTeam, setSelectedPreviewTeam] = useState(false);
@@ -23,7 +24,10 @@ function Navigation() {
 
   if (restoring || restoreFailed) {
     return (
-      <SessionStatusScreen retry={restoreFailed ? retryRestore : undefined} />
+      <SessionStatusScreen
+        retry={restoreFailed ? retryRestore : undefined}
+        onLogin={returnToLogin}
+      />
     );
   }
 

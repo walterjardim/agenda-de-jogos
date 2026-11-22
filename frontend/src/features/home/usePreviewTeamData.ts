@@ -41,6 +41,7 @@ export function usePreviewTeamData() {
         ),
       ],
     }));
+    return id;
   }
 
   function changePreviewMatch(

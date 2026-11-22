@@ -1,6 +1,7 @@
 import { Redirect, useLocalSearchParams, useRouter } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { useDiscardChanges } from '../../../shared/components/useDiscardChanges';
 import { theme } from '../../../shared/theme/theme';
 import { ApiError } from '../../auth/api';
 import { useAuth } from '../../auth/AuthContext';
@@ -33,7 +34,7 @@ function Selection({
   const router = useRouter();
   const { changePreviewMatch } = usePreview();
   const { invalidateSession } = useAuth();
-  const [selected, setSelected] = useState(() => {
+  const [baseline, setBaseline] = useState(() => {
     const saved = match.callups ?? [];
     const hasSavedCallup = match.hasSavedCallup ?? saved.length > 0;
     return new Set(
@@ -42,9 +43,15 @@ function Selection({
         : roster.map(({ id }) => id),
     );
   });
+  const [selected, setSelected] = useState(baseline);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const pending = useRef(false);
+  const { allowExit, confirmation } = useDiscardChanges(
+    selected.size !== baseline.size ||
+      [...selected].some((id) => !baseline.has(id)),
+    busy,
+  );
   const athletes = roster.filter(({ id }) => selected.has(id));
   const count = athletes.length;
   const total =
@@ -86,12 +93,14 @@ function Selection({
           hasSavedCallup: true,
         }));
       }
+      setBaseline(selected);
       if (share) {
         router.push({
           pathname: '/compartilhar/[id]',
           params: { id: match.id, type: 'callup' },
         });
       } else {
+        allowExit();
         router.dismissTo(sheet);
       }
     } catch (error) {
@@ -120,7 +129,13 @@ function Selection({
         </Text>
       </View>
       {roster.length === 0 && (
-        <Text style={styles.text}>Nenhum atleta cadastrado no elenco.</Text>
+        <View style={styles.card}>
+          <Text style={styles.text}>Nenhum atleta cadastrado no elenco.</Text>
+          <ActionButton
+            label="Abrir elenco"
+            onPress={() => router.push('/elenco')}
+          />
+        </View>
       )}
       {roster.map(({ id, name, shirtNumber, position, status }) => (
         <View
@@ -129,7 +144,7 @@ function Selection({
         >
           <Pressable
             accessibilityRole="checkbox"
-            accessibilityLabel={`${shirtNumber} · ${name} · ${position}`}
+            accessibilityLabel={`${shirtNumber} · ${name} · ${position}${status === 'active' ? '' : status === 'injured' ? ' · Lesão' : ' · Suspensão'}`}
             aria-checked={selected.has(id)}
             accessibilityState={{ checked: selected.has(id), disabled: busy }}
             disabled={busy}
@@ -162,6 +177,7 @@ function Selection({
           )}
         </View>
       ))}
+      {confirmation}
       {Boolean(error) && (
         <Text accessibilityLiveRegion="polite" style={styles.error}>
           {error}

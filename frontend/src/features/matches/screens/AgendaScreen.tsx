@@ -17,7 +17,6 @@ import {
   View,
   useWindowDimensions,
 } from 'react-native';
-import { CalendarIcon } from '../../../shared/components/CalendarIcon';
 import { theme } from '../../../shared/theme/theme';
 import { useAuth } from '../../auth/AuthContext';
 import { HomeMenu, HomeMenuItem } from '../../home/components/HomeMenu';
@@ -79,6 +78,8 @@ function WeekCalendar({
   matches,
   selectedDay,
   selectDay,
+  moveWeek,
+  showToday,
 }: {
   week: ReturnType<typeof weekInTimezone>;
   today: string;
@@ -86,10 +87,27 @@ function WeekCalendar({
   matches: Match[];
   selectedDay: string | null;
   selectDay: (day: string) => void;
+  moveWeek: (offset: number) => void;
+  showToday: () => void;
 }) {
   const start = Temporal.PlainDate.from(week.from);
-  const { width } = useWindowDimensions();
-  const compact = width < 412;
+  const end = start.add({ days: 6 });
+  const monthLabel = end.toLocaleString('pt-BR', { month: 'short' });
+  const period =
+    start.month === end.month && start.year === end.year
+      ? `${start.day}–${end.day} ${monthLabel} ${end.year}`
+      : week.label;
+  const { fontScale } = useWindowDimensions();
+  const [daysWidth, setDaysWidth] = useState(0);
+  const dayMinWidth = Math.max(48, Math.ceil(36 * fontScale));
+  const availableColumns = Math.floor((daysWidth + 2) / (dayMinWidth + 2));
+  const columns =
+    availableColumns >= 7 ? 7 : Math.max(1, Math.min(4, availableColumns));
+  const dayWidth =
+    daysWidth > 0
+      ? Math.floor((daysWidth - (columns - 1) * 2) / columns)
+      : dayMinWidth;
+
   const dayButtons = useRef<(ComponentRef<typeof Pressable> | null)[]>([]);
   const tabStop = selectedDay ?? week.from;
 
@@ -113,12 +131,34 @@ function WeekCalendar({
   return (
     <View style={agendaStyles.calendar}>
       <View style={agendaStyles.calendarHeading}>
-        <CalendarIcon size={22} color={theme.colors.white} />
-        <Text style={agendaStyles.period}>{week.label}</Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Semana anterior"
+          onPress={() => moveWeek(-1)}
+          style={agendaStyles.calendarButton}
+        >
+          <Text style={agendaStyles.arrow}>‹</Text>
+        </Pressable>
+        <Text
+          accessibilityLiveRegion="polite"
+          aria-live="polite"
+          style={agendaStyles.period}
+        >
+          {period}
+        </Text>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Próxima semana"
+          onPress={() => moveWeek(1)}
+          style={agendaStyles.calendarButton}
+        >
+          <Text style={agendaStyles.arrow}>›</Text>
+        </Pressable>
       </View>
       <View
         accessibilityRole="radiogroup"
         accessibilityLabel="Dia da agenda"
+        onLayout={({ nativeEvent }) => setDaysWidth(nativeEvent.layout.width)}
         style={agendaStyles.days}
       >
         {weekdays.map((weekday, index) => {
@@ -144,20 +184,35 @@ function WeekCalendar({
               accessibilityLabel={`${date.toLocaleString('pt-BR', { dateStyle: 'full' })}${isToday ? ', hoje' : ''}${hasMatch ? ', dia de jogo' : ''}`}
               style={({ pressed }) => [
                 agendaStyles.day,
-                compact && agendaStyles.compactDay,
+                { width: dayWidth },
                 pressed && agendaStyles.pressed,
-                isToday && agendaStyles.today,
                 selected && agendaStyles.selected,
               ]}
             >
               <Text style={agendaStyles.weekday}>{weekday}</Text>
               <Text style={agendaStyles.dayNumber}>{date.day}</Text>
-              <View
-                style={[agendaStyles.dot, hasMatch && agendaStyles.matchDot]}
-              />
+              <View style={agendaStyles.dayStatus}>
+                {isToday && <Text style={agendaStyles.weekday}>Hoje</Text>}
+                {hasMatch && <View style={agendaStyles.matchDot} />}
+              </View>
             </Pressable>
           );
         })}
+      </View>
+      <View style={agendaStyles.calendarFooter}>
+        {matchDays.size > 0 && (
+          <View style={agendaStyles.legend}>
+            <View style={agendaStyles.matchDot} />
+            <Text style={agendaStyles.weekday}>Dia de jogo</Text>
+          </View>
+        )}
+        <Pressable
+          accessibilityRole="button"
+          onPress={showToday}
+          style={agendaStyles.calendarButton}
+        >
+          <Text style={agendaStyles.todayAction}>Hoje</Text>
+        </Pressable>
       </View>
     </View>
   );
@@ -167,13 +222,15 @@ function AgendaMatchCard({
   match,
   teamName,
   timezone,
-  today = false,
+  today,
+  showDate,
   onPress,
 }: {
   match: Match;
   teamName: string;
   timezone: string;
-  today?: boolean;
+  today: boolean;
+  showDate: boolean;
   onPress: () => void;
 }) {
   const sameDayArrival =
@@ -183,17 +240,16 @@ function AgendaMatchCard({
     <View
       style={[styles.card, agendaStyles.card, today && agendaStyles.todayCard]}
     >
-      <Text style={agendaStyles.matchTime}>
-        Jogo · {formatGameTime(match.startsAt, timezone, !today)}
-      </Text>
       <Text accessibilityRole="header" style={styles.title}>
         {teamName} × {match.opponent}
       </Text>
-      <Text style={styles.text}>
-        Chegada ·{' '}
-        {formatGameTime(match.arrivalAt, timezone, !today || !sameDayArrival)}
+      <Text style={agendaStyles.matchTime}>
+        Jogo · {formatGameTime(match.startsAt, timezone, showDate)}
       </Text>
-      {today && Boolean(match.location) && (
+      <Text style={styles.text}>
+        Chegada · {formatGameTime(match.arrivalAt, timezone, !sameDayArrival)}
+      </Text>
+      {Boolean(match.location) && (
         <Text style={styles.text}>{match.location}</Text>
       )}
       <ActionButton label="Ver ficha" onPress={onPress} />
@@ -286,19 +342,17 @@ function WeeklyAgenda({ id, timezone, token }: AgendaTeam) {
   return (
     <HomeScreen
       title="Agenda da semana"
+      compactHeader
       description={
         selectedTeam
           ? `${selectedTeam.name} · ${selectedTeam.category}`
           : undefined
       }
     >
-      <View style={styles.row}>
-        <ActionButton label="Semana anterior" onPress={() => moveWeek(-1)} />
-        <ActionButton label="Hoje" onPress={showToday} />
-        <ActionButton label="Próxima semana" onPress={() => moveWeek(1)} />
-      </View>
       <WeekCalendar
         week={week}
+        moveWeek={moveWeek}
+        showToday={showToday}
         today={today}
         timezone={timezone}
         matches={data?.matches ?? []}
@@ -306,24 +360,29 @@ function WeeklyAgenda({ id, timezone, token }: AgendaTeam) {
         selectDay={(day) => show(day, day)}
       />
       <View style={agendaStyles.section}>
-        <Text
-          accessibilityRole="header"
-          accessibilityLiveRegion="polite"
-          aria-live="polite"
-          style={agendaStyles.sectionTitle}
-        >
-          {selectedDay === today
-            ? 'Jogos de hoje'
-            : selectedDay
-              ? `Jogos de ${formatDate(Temporal.PlainDate.from(selectedDay))}`
-              : 'Jogos da semana'}
-        </Text>
-        {selectedDay && (
-          <ActionButton
-            label="Ver todos da semana"
-            onPress={() => show(anchor, null)}
-          />
-        )}
+        <View style={agendaStyles.sectionHeading}>
+          <Text
+            accessibilityRole="header"
+            accessibilityLiveRegion="polite"
+            aria-live="polite"
+            style={agendaStyles.sectionTitle}
+          >
+            {selectedDay === today
+              ? 'Jogos de hoje'
+              : selectedDay
+                ? `Jogos de ${formatDate(Temporal.PlainDate.from(selectedDay))}`
+                : 'Jogos da semana'}
+          </Text>
+          {selectedDay && (
+            <Pressable
+              accessibilityRole="button"
+              onPress={() => show(anchor, null)}
+              style={agendaStyles.calendarButton}
+            >
+              <Text style={agendaStyles.weekAction}>Ver semana</Text>
+            </Pressable>
+          )}
+        </View>
         {(state.status === 'loading' ||
           (state.status === 'ready' && !data)) && <LoadingMatches />}
         {state.status === 'error' && (
@@ -344,6 +403,7 @@ function WeeklyAgenda({ id, timezone, token }: AgendaTeam) {
             match={match}
             teamName={teamName}
             timezone={timezone}
+            showDate={!selectedDay}
             today={gameDate(match.startsAt, timezone) === today}
             onPress={() => openMatch(match.id)}
           />
@@ -440,7 +500,7 @@ export function AgendaScreen() {
 const agendaStyles = StyleSheet.create({
   calendar: {
     padding: 12,
-    gap: 12,
+    gap: 4,
     borderRadius: 20,
     backgroundColor: theme.colors.accent,
   },
@@ -448,40 +508,79 @@ const agendaStyles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    paddingHorizontal: 4,
   },
   period: {
     flex: 1,
+    textAlign: 'center',
     color: theme.colors.white,
     fontSize: 14,
     fontWeight: '700',
   },
   days: { flexDirection: 'row', flexWrap: 'wrap', gap: 2 },
   day: {
-    flexBasis: 0,
-    flexGrow: 1,
-    minWidth: 48,
     alignItems: 'center',
     minHeight: 48,
     borderWidth: 1,
     borderColor: 'transparent',
-    paddingVertical: 8,
-    gap: 4,
+    paddingVertical: 4,
+    gap: 2,
     borderRadius: 10,
   },
-  compactDay: { flexBasis: '23%' },
   pressed: { opacity: 0.8 },
-  today: { backgroundColor: 'rgba(255, 255, 255, 0.18)' },
   selected: {
     borderColor: theme.colors.white,
     backgroundColor: 'rgba(255, 255, 255, 0.25)',
   },
   weekday: { color: theme.colors.white, fontSize: 11 },
   dayNumber: { color: theme.colors.white, fontSize: 16, fontWeight: '800' },
-  dot: { width: 5, height: 5, borderRadius: 3 },
-  matchDot: { backgroundColor: theme.colors.white },
+  calendarFooter: {
+    flexDirection: 'row',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    flexWrap: 'wrap',
+  },
+  calendarButton: {
+    minWidth: 48,
+    minHeight: 48,
+    paddingHorizontal: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  arrow: { color: theme.colors.white, fontSize: 26, fontWeight: '700' },
+  todayAction: {
+    color: theme.colors.white,
+    fontSize: 13,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+  },
+  legend: { flexGrow: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
+  dayStatus: {
+    minHeight: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 2,
+  },
+  matchDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: theme.colors.white,
+  },
   card: { borderColor: theme.colors.surfaceBorder },
   section: { gap: 8 },
+  sectionHeading: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    flexWrap: 'wrap',
+    columnGap: 8,
+  },
+  weekAction: {
+    color: theme.colors.accent,
+    fontSize: 14,
+    fontWeight: '700',
+    textDecorationLine: 'underline',
+  },
   sectionTitle: { color: theme.colors.text, fontSize: 19, fontWeight: '800' },
   todayCard: {
     backgroundColor: theme.colors.accentSurface,

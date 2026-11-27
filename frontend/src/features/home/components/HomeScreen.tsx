@@ -11,6 +11,7 @@ export function HomeScreen({
   title,
   description,
   standalone = false,
+  compactHeader = false,
   onBack,
   backDisabled = false,
   children,
@@ -18,6 +19,7 @@ export function HomeScreen({
   title: string;
   description?: string;
   standalone?: boolean;
+  compactHeader?: boolean;
   onBack?: () => void;
   backDisabled?: boolean;
   children?: ReactNode;
@@ -38,9 +40,15 @@ export function HomeScreen({
         keyboardShouldPersistTaps="handled"
       >
         <View style={styles.content}>
-          <View style={[surfaces.card, styles.header]}>
+          <View
+            style={[
+              surfaces.card,
+              styles.header,
+              compactHeader && styles.compactHeader,
+            ]}
+          >
             <View style={styles.brand}>
-              <View style={styles.icon}>
+              <View style={[styles.icon, compactHeader && styles.compactIcon]}>
                 <CalendarIcon size={20} color={theme.colors.white} />
               </View>
               <Text style={styles.eyebrow}>
@@ -55,7 +63,10 @@ export function HomeScreen({
                 disabled={backDisabled}
               />
             )}
-            <Text accessibilityRole="header" style={styles.title}>
+            <Text
+              accessibilityRole="header"
+              style={[styles.title, compactHeader && styles.compactTitle]}
+            >
               {title}
             </Text>
             {description && <Text style={surfaces.text}>{description}</Text>}
@@ -83,6 +94,9 @@ const styles = StyleSheet.create({
     borderTopWidth: 3,
     borderTopColor: theme.colors.accent,
   },
+  compactHeader: { padding: 12, gap: 4 },
+  compactIcon: { width: 26, height: 26 },
+  compactTitle: { fontSize: 22 },
   brand: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   icon: {
     width: 32,

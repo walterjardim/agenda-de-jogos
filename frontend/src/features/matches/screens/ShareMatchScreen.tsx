@@ -81,18 +81,21 @@ function Message({
             : 'Use o compartilhamento do dispositivo ou copie o conteúdo completo.'}
         </Text>
       )}
-      <View style={styles.row}>
+      <View style={shareStyles.actions}>
         {(whatsappUrl || Platform.OS !== 'web') && (
           <ActionButton
             icon="share"
             label={whatsappUrl ? 'Enviar no WhatsApp' : 'Compartilhar texto'}
             primary
+            fullWidth
             onPress={() => void send()}
           />
         )}
         <ActionButton
           icon="copy"
           label="Copiar texto"
+          primary={!whatsappUrl && Platform.OS === 'web'}
+          fullWidth
           onPress={() => void copy()}
         />
       </View>
@@ -109,56 +112,69 @@ function ShareMatch({
   id,
   team,
   initialType,
+  fromAgenda,
 }: {
   id: string;
   team: AgendaTeam;
   initialType: MessageType;
+  fromAgenda: boolean;
 }) {
   const router = useRouter();
   const [requestedType, setType] = useState(initialType);
   const loadMatch = useMatchLoader(id, team);
   const { token, timezone } = team;
   const loadPermissions = useCallback(
-    async () =>
-      token ? (await fetchTeam(team.id, token)).isOwner === true : true,
+    async () => !token || (await fetchTeam(team.id, token)).isOwner === true,
     [team.id, token],
   );
-  const permissions = useMatchResource(loadPermissions);
+  const permissions = useMatchResource(loadPermissions, true);
   const canShareCallup =
     !token || (permissions.state.status === 'ready' && permissions.state.data);
+  const waitingForPermissions =
+    Boolean(token) && permissions.state.status === 'loading';
   const type = canShareCallup ? requestedType : 'sheet';
   const load = useCallback(async () => {
+    if (waitingForPermissions) return undefined;
     const match = await loadMatch();
-    if (!match) return null;
+    if (!match) return { type, message: null };
+
+    let text = '';
     if (token) {
-      const message = await fetchMessage(id, token, type);
-      return {
-        type,
-        text: message.text,
-        whatsappUrl: whatsappLink(message.text),
-      };
+      try {
+        text = (await fetchMessage(id, token, type)).text;
+      } catch (error) {
+        if (!(
+          type === 'callup' &&
+          error instanceof ApiError &&
+          error.status === 422
+        )) {
+          throw error;
+        }
+      }
+    } else {
+      text = previewMessage(match, timezone, type);
     }
-    const text = previewMessage(match, timezone, type);
-    return {
-      type,
-      text,
-      whatsappUrl: whatsappLink(text),
-    };
-  }, [id, loadMatch, timezone, token, type]);
+
+    return { type, message: { text, whatsappUrl: whatsappLink(text) } };
+  }, [id, loadMatch, timezone, token, type, waitingForPermissions]);
   const { state, retry } = useMatchResource(load);
-  const emptyCallup =
-    state.status === 'error' &&
-    state.error instanceof ApiError &&
-    state.error.status === 422 &&
-    type === 'callup';
+  const current =
+    !waitingForPermissions &&
+    state.status === 'ready' &&
+    state.data?.type === type
+      ? state.data
+      : null;
+  const message = current?.message;
 
   return (
     <HomeScreen
       title="Prévia do compartilhamento"
       standalone
-      onBack={() =>
-        router.dismissTo({ pathname: '/jogo/[id]', params: { id } })
-      }
+      compactHeader
+      onBack={() => {
+        if (fromAgenda) router.dismissTo('/agenda');
+        else router.dismissTo({ pathname: '/jogo/[id]', params: { id } });
+      }}
     >
       {canShareCallup && (
         <View
@@ -196,47 +212,60 @@ function ShareMatch({
           ))}
         </View>
       )}
-      {state.status === 'loading' && <LoadingMatches />}
-      {state.status === 'error' && !emptyCallup && (
+      {!current && state.status !== 'error' && <LoadingMatches />}
+      {state.status === 'error' && (
         <MatchLoadError error={state.error} retry={retry} />
       )}
-      {state.status === 'ready' && !state.data && (
+      {current && !message && (
         <Text style={styles.text}>Jogo indisponível.</Text>
       )}
-      {(emptyCallup ||
-        (state.status === 'ready' &&
-          state.data?.type === type &&
-          !state.data.text)) && (
+      {type === 'callup' && message && !message.text && (
         <View style={styles.card}>
           <Text style={styles.text}>
             Selecione pelo menos um atleta para compartilhar a convocação.
           </Text>
           <ActionButton
+            icon="teams"
             primary
-            label="Montar convocação"
+            fullWidth
+            label="Selecionar atletas"
             onPress={() =>
-              router.dismissTo({ pathname: '/convocacao/[id]', params: { id } })
+              router.push({
+                pathname: '/convocacao/[id]',
+                params: { id, from: 'preview' },
+              })
             }
           />
         </View>
       )}
-      {state.status === 'ready' &&
-        state.data?.type === type &&
-        Boolean(state.data.text) && (
-          <Message
-            key={type}
-            text={state.data.text}
-            whatsappUrl={state.data.whatsappUrl}
-          />
-        )}
+      {message?.text && (
+        <Message
+          key={type}
+          text={message.text}
+          whatsappUrl={message.whatsappUrl}
+        />
+      )}
+      {fromAgenda && message && (
+        <ActionButton
+          label="Detalhes do jogo"
+          fullWidth
+          onPress={() =>
+            router.push({
+              pathname: '/jogo/[id]',
+              params: { id, from: 'preview' },
+            })
+          }
+        />
+      )}
     </HomeScreen>
   );
 }
 
 export function ShareMatchScreen() {
-  const { id, type } = useLocalSearchParams<{
+  const { id, type, from } = useLocalSearchParams<{
     id: string;
     type?: MessageType;
+    from?: 'agenda';
   }>();
   const team = useAgendaTeam();
   if (!team || !id) return <Redirect href="/buscar" />;
@@ -245,12 +274,14 @@ export function ShareMatchScreen() {
       key={`${id}:${team.id}`}
       id={id}
       team={team}
+      fromAgenda={from === 'agenda'}
       initialType={type === 'callup' ? 'callup' : 'sheet'}
     />
   );
 }
 
 const shareStyles = StyleSheet.create({
+  actions: { gap: 8 },
   segments: {
     flexDirection: 'row',
     gap: 4,
@@ -260,7 +291,7 @@ const shareStyles = StyleSheet.create({
   },
   option: {
     flex: 1,
-    minHeight: 44,
+    minHeight: 48,
     justifyContent: 'center',
     padding: 8,
     borderRadius: 10,

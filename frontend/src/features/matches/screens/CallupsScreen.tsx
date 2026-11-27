@@ -26,10 +26,12 @@ function Selection({
   match,
   roster,
   token,
+  returnToPreview,
 }: {
   match: MatchDetail;
   roster: Athlete[];
   token: string | null;
+  returnToPreview?: () => void;
 }) {
   const router = useRouter();
   const { changePreviewMatch } = usePreview();
@@ -101,7 +103,8 @@ function Selection({
         });
       } else {
         allowExit();
-        router.dismissTo(sheet);
+        if (returnToPreview) returnToPreview();
+        else router.dismissTo(sheet);
       }
     } catch (error) {
       if (token && error instanceof ApiError && error.status === 401) {
@@ -183,26 +186,38 @@ function Selection({
           {error}
         </Text>
       )}
-      <View style={styles.row}>
+      <View style={rosterStyles.actions}>
         <ActionButton
           icon="save"
           label={busy ? 'Salvando…' : 'Salvar convocação'}
           primary
+          fullWidth
           disabled={busy}
           onPress={() => void submit(false)}
         />
-        <ActionButton
-          icon="share"
-          label="Compartilhar convocação"
-          disabled={busy || count === 0}
-          onPress={() => void submit(true)}
-        />
+        {!returnToPreview && (
+          <ActionButton
+            icon="share"
+            label="Compartilhar convocação"
+            fullWidth
+            disabled={busy || count === 0}
+            onPress={() => void submit(true)}
+          />
+        )}
       </View>
     </>
   );
 }
 
-function Callups({ id, team }: { id: string; team: AgendaTeam }) {
+function Callups({
+  id,
+  team,
+  fromPreview,
+}: {
+  id: string;
+  team: AgendaTeam;
+  fromPreview: boolean;
+}) {
   const router = useRouter();
   const loadMatch = useMatchLoader(id, team);
   const { previewAthletes } = usePreview();
@@ -222,13 +237,25 @@ function Callups({ id, team }: { id: string; team: AgendaTeam }) {
   const { state, retry } = useMatchResource(load);
   const data = state.status === 'ready' ? state.data : null;
 
+  function returnToPreview() {
+    if (router.canGoBack()) router.back();
+    else
+      router.replace({
+        pathname: '/compartilhar/[id]',
+        params: { id, type: 'callup', from: 'agenda' },
+      });
+  }
+
   return (
     <HomeScreen
       title="Convocação"
       description={data?.match.opponent}
       standalone
-      onBack={() =>
-        router.dismissTo({ pathname: '/jogo/[id]', params: { id } })
+      compactHeader
+      onBack={
+        fromPreview
+          ? returnToPreview
+          : () => router.dismissTo({ pathname: '/jogo/[id]', params: { id } })
       }
     >
       {state.status === 'loading' && <LoadingMatches />}
@@ -238,19 +265,33 @@ function Callups({ id, team }: { id: string; team: AgendaTeam }) {
       {state.status === 'ready' && !data && (
         <Text style={styles.text}>Jogo indisponível.</Text>
       )}
-      {data && <Selection {...data} token={token} />}
+      {data && (
+        <Selection
+          {...data}
+          token={token}
+          returnToPreview={fromPreview ? returnToPreview : undefined}
+        />
+      )}
     </HomeScreen>
   );
 }
 
 export function CallupsScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, from } = useLocalSearchParams<{ id: string; from?: 'preview' }>();
   const team = useAgendaTeam();
   if (!team || !id) return <Redirect href="/buscar" />;
-  return <Callups key={`${id}:${team.id}`} id={id} team={team} />;
+  return (
+    <Callups
+      fromPreview={from === 'preview'}
+      key={`${id}:${team.id}`}
+      id={id}
+      team={team}
+    />
+  );
 }
 
 const rosterStyles = StyleSheet.create({
+  actions: { gap: 8 },
   row: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 12 },
   dimmed: { opacity: 0.65 },
   player: { flex: 1 },

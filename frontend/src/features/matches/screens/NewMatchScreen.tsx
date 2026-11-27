@@ -251,7 +251,10 @@ function MatchForm({
           primary
           label="Ver ficha"
           onPress={() =>
-            router.replace({ pathname: '/jogo/[id]', params: { id: saved.id } })
+            router.replace({
+              pathname: '/compartilhar/[id]',
+              params: { id: saved.id, type: 'callup', from: 'agenda' },
+            })
           }
         />
         <ActionButton

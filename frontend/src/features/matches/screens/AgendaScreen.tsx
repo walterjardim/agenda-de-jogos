@@ -252,7 +252,7 @@ function AgendaMatchCard({
       {Boolean(match.location) && (
         <Text style={styles.text}>{match.location}</Text>
       )}
-      <ActionButton label="Ver ficha" onPress={onPress} />
+      <ActionButton label="Ver ficha" onPress={onPress} fullWidth />
     </View>
   );
 }
@@ -336,7 +336,10 @@ function WeeklyAgenda({ id, timezone, token }: AgendaTeam) {
   const teamName = selectedTeam?.name ?? 'Time';
 
   function openMatch(id: string) {
-    router.push({ pathname: '/jogo/[id]', params: { id } });
+    router.push({
+      pathname: '/compartilhar/[id]',
+      params: { id, type: 'callup', from: 'agenda' },
+    });
   }
 
   return (

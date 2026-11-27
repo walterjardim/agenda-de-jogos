@@ -31,7 +31,15 @@ import {
 import { formatFee, formatGameTime, pieceLabel } from '../model';
 import { previewTeam } from '../preview';
 
-function MatchSheet({ id, team }: { id: string; team: AgendaTeam }) {
+function MatchSheet({
+  id,
+  team,
+  fromPreview,
+}: {
+  id: string;
+  team: AgendaTeam;
+  fromPreview: boolean;
+}) {
   const router = useRouter();
   const { changePreviewMatch } = usePreview();
   const { invalidateSession } = useAuth();
@@ -103,7 +111,10 @@ function MatchSheet({ id, team }: { id: string; team: AgendaTeam }) {
           : match.opponent)
       }
       standalone
-      onBack={() => router.dismissTo('/agenda')}
+      onBack={() => {
+        if (fromPreview && router.canGoBack()) router.back();
+        else router.dismissTo('/agenda');
+      }}
       backDisabled={deleting}
     >
       {state.status === 'loading' && <LoadingMatches />}
@@ -265,10 +276,17 @@ function MatchSheet({ id, team }: { id: string; team: AgendaTeam }) {
 }
 
 export function MatchSheetScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { id, from } = useLocalSearchParams<{ id: string; from?: 'preview' }>();
   const team = useAgendaTeam();
   if (!team || !id) return <Redirect href="/buscar" />;
-  return <MatchSheet key={`${id}:${team.id}`} id={id} team={team} />;
+  return (
+    <MatchSheet
+      fromPreview={from === 'preview'}
+      key={`${id}:${team.id}`}
+      id={id}
+      team={team}
+    />
+  );
 }
 
 const dialogStyles = StyleSheet.create({

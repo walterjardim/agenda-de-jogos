@@ -248,6 +248,7 @@ function MatchForm({
           Jogo salvo para {saved.day.split('-').reverse().join('/')}.
         </Text>
         <ActionButton
+          fullWidth
           primary
           label="Ver ficha"
           onPress={() =>
@@ -258,6 +259,7 @@ function MatchForm({
           }
         />
         <ActionButton
+          fullWidth
           label="Ir para a semana do jogo"
           onPress={() =>
             router.dismissTo({
@@ -424,8 +426,9 @@ function MatchForm({
           {error}
         </Text>
       )}
-      <View style={styles.row}>
+      <View style={styles.actions}>
         <ActionButton
+          fullWidth
           icon="save"
           label={busy ? 'Salvando…' : 'Salvar jogo'}
           primary
@@ -433,6 +436,7 @@ function MatchForm({
           onPress={() => void save()}
         />
         <ActionButton
+          fullWidth
           icon="cancel"
           label="Cancelar"
           disabled={busy}

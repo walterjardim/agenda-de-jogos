@@ -225,8 +225,9 @@ function RosterTable({
                   />
                 </View>
               )}
-              <View style={styles.row}>
+              <View style={styles.actions}>
                 <ActionButton
+                  fullWidth
                   icon="remove"
                   label={busy ? 'Removendo…' : 'Confirmar remoção'}
                   destructive
@@ -234,6 +235,7 @@ function RosterTable({
                   onPress={() => void remove()}
                 />
                 <ActionButton
+                  fullWidth
                   icon="cancel"
                   label="Cancelar"
                   disabled={busy}
@@ -304,9 +306,10 @@ function Records({ kind, team }: { kind: RecordKind; team: AgendaTeam }) {
             )}
           </View>
         ))}
-      <View style={styles.row}>
+      <View style={styles.actions}>
         {data?.team.isOwner === true && (
           <ActionButton
+            fullWidth
             icon="add"
             label={screen.create}
             primary
@@ -535,8 +538,9 @@ function Editor({
                 : 'Excluir este atleta do elenco e das convocações?'
               : 'Excluir esta competição? Os jogos vinculados ficarão sem competição.'}
           </Text>
-          <View style={styles.row}>
+          <View style={styles.actions}>
             <ActionButton
+              fullWidth
               icon="remove"
               label="Confirmar exclusão"
               primary
@@ -544,6 +548,7 @@ function Editor({
               onPress={() => void submit(true)}
             />
             <ActionButton
+              fullWidth
               icon="cancel"
               label="Cancelar exclusão"
               disabled={busy}
@@ -553,6 +558,7 @@ function Editor({
               }}
             />
             <ActionButton
+              fullWidth
               icon="back"
               label="Voltar à lista"
               disabled={busy}
@@ -561,8 +567,9 @@ function Editor({
           </View>
         </View>
       ) : (
-        <View style={styles.row}>
+        <View style={styles.actions}>
           <ActionButton
+            fullWidth
             icon="save"
             label={busy ? 'Salvando…' : screen.save}
             primary
@@ -571,6 +578,7 @@ function Editor({
           />
           {record && (
             <ActionButton
+              fullWidth
               icon="remove"
               label={screen.remove}
               destructive
@@ -582,6 +590,7 @@ function Editor({
             />
           )}
           <ActionButton
+            fullWidth
             icon="back"
             label="Voltar à lista"
             disabled={busy}

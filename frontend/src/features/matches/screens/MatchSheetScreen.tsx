@@ -170,8 +170,9 @@ function MatchSheet({
             )}
             <Text style={styles.label}>Convocados · {match.callupsCount}</Text>
           </View>
-          <View style={styles.row}>
+          <View style={surfaces.actions}>
             <ActionButton
+              fullWidth
               icon="share"
               label="Compartilhar ficha"
               primary
@@ -185,6 +186,7 @@ function MatchSheet({
             />
             {data.selectedTeam.isOwner && (
               <ActionButton
+                fullWidth
                 icon="teams"
                 label="Selecionar atletas"
                 disabled={confirming}
@@ -249,14 +251,16 @@ function MatchSheet({
                         {error}
                       </Text>
                     )}
-                    <View style={styles.row}>
+                    <View style={surfaces.actions}>
                       <ActionButton
+                        fullWidth
                         ref={cancelButton}
                         label="Cancelar"
                         disabled={deleting}
                         onPress={cancelDeletion}
                       />
                       <ActionButton
+                        fullWidth
                         icon="remove"
                         label={deleting ? 'Excluindo…' : 'Excluir jogo'}
                         destructive

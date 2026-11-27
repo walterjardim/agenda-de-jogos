@@ -104,6 +104,7 @@ export function ChooseTeamScreen({
     >
       {firstTeam && (
         <ActionButton
+          fullWidth
           label="Cadastrar meu time"
           onPress={() =>
             router.navigate({
@@ -146,7 +147,7 @@ export function ChooseTeamScreen({
           <Text accessibilityLiveRegion="polite" style={styles.text}>
             Não foi possível carregar os times.
           </Text>
-          <ActionButton label="Tentar novamente" onPress={retry} />
+          <ActionButton fullWidth label="Tentar novamente" onPress={retry} />
         </View>
       )}
       {state.status === 'ready' && (
@@ -175,6 +176,7 @@ export function ChooseTeamScreen({
               </Text>
               {team.isOwner || team.isFollowing ? (
                 <ActionButton
+                  fullWidth
                   icon="save"
                   label={
                     busy === team.id
@@ -188,6 +190,7 @@ export function ChooseTeamScreen({
                 />
               ) : (
                 <ActionButton
+                  fullWidth
                   icon="follow"
                   label={busy === team.id ? 'Seguindo…' : 'Seguir'}
                   disabled={!!busy}
@@ -195,11 +198,12 @@ export function ChooseTeamScreen({
                 />
               )}
               {followTarget === team.id && (
-                <View style={styles.row}>
+                <View style={styles.actions}>
                   <Text style={styles.text}>
                     Ao seguir, você pode acompanhar os jogos deste time.
                   </Text>
                   <ActionButton
+                    fullWidth
                     label="Confirmar que quero seguir"
                     primary
                     disabled={!!busy}
@@ -209,6 +213,7 @@ export function ChooseTeamScreen({
                     }}
                   />
                   <ActionButton
+                    fullWidth
                     label="Cancelar"
                     onPress={() => setFollowTarget(undefined)}
                   />
@@ -218,6 +223,7 @@ export function ChooseTeamScreen({
           ))}
           {state.data.nextCursor && (
             <ActionButton
+              fullWidth
               icon="chevron"
               label="Próxima página"
               disabled={!!busy}
@@ -226,9 +232,10 @@ export function ChooseTeamScreen({
           )}
         </>
       )}
-      <View style={styles.row}>
+      <View style={styles.actions}>
         {cursor && (
           <ActionButton
+            fullWidth
             icon="back"
             label="Voltar ao início da lista"
             disabled={!!busy}
@@ -236,6 +243,7 @@ export function ChooseTeamScreen({
           />
         )}
         <ActionButton
+          fullWidth
           icon="refresh"
           label="Atualizar lista"
           disabled={!!busy || refreshing || state.status === 'loading'}
@@ -243,6 +251,7 @@ export function ChooseTeamScreen({
         />
         {mine && (
           <ActionButton
+            fullWidth
             icon="search"
             label="Buscar outros times"
             disabled={!!busy}
@@ -250,6 +259,7 @@ export function ChooseTeamScreen({
           />
         )}
         <ActionButton
+          fullWidth
           icon="teams"
           label="Gerenciar minhas equipes"
           disabled={!!busy}
@@ -257,6 +267,7 @@ export function ChooseTeamScreen({
         />
         {!mine && session?.user.activeTeamId && (
           <ActionButton
+            fullWidth
             icon="back"
             label="Voltar à agenda"
             disabled={!!busy}

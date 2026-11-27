@@ -35,11 +35,13 @@ export function useDiscardChanges(dirty: boolean, saving = false) {
               As alterações que você fez ainda não foram salvas.
             </Text>
             <ActionButton
+              fullWidth
               primary
               label="Continuar editando"
               onPress={() => setRepeatRemoval(undefined)}
             />
             <ActionButton
+              fullWidth
               destructive
               label="Descartar alterações"
               onPress={() => {

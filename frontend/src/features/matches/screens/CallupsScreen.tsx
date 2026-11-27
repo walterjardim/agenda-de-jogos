@@ -186,7 +186,7 @@ function Selection({
           {error}
         </Text>
       )}
-      <View style={rosterStyles.actions}>
+      <View style={styles.actions}>
         <ActionButton
           icon="save"
           label={busy ? 'Salvando…' : 'Salvar convocação'}
@@ -291,7 +291,6 @@ export function CallupsScreen() {
 }
 
 const rosterStyles = StyleSheet.create({
-  actions: { gap: 8 },
   row: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 12 },
   dimmed: { opacity: 0.65 },
   player: { flex: 1 },

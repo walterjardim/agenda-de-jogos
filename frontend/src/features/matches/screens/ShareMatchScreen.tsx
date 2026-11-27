@@ -81,7 +81,7 @@ function Message({
             : 'Use o compartilhamento do dispositivo ou copie o conteúdo completo.'}
         </Text>
       )}
-      <View style={shareStyles.actions}>
+      <View style={styles.actions}>
         {(whatsappUrl || Platform.OS !== 'web') && (
           <ActionButton
             icon="share"
@@ -281,7 +281,6 @@ export function ShareMatchScreen() {
 }
 
 const shareStyles = StyleSheet.create({
-  actions: { gap: 8 },
   segments: {
     flexDirection: 'row',
     gap: 4,

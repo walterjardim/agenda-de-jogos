@@ -26,6 +26,7 @@ export const surfaces = StyleSheet.create({
     fontSize: 16,
   },
   row: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', gap: 8 },
+  actions: { gap: 8 },
   field: { gap: 6 },
   title: { color: theme.colors.text, fontSize: 18, fontWeight: '800' },
   label: { color: theme.colors.text, fontSize: 15, fontWeight: '700' },

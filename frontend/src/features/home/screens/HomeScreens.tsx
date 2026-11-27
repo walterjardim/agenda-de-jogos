@@ -23,6 +23,7 @@ function ChoosePreviewTeam() {
 
   return (
     <ActionButton
+      fullWidth
       label="Escolher time"
       primary
       onPress={() => {
@@ -85,6 +86,7 @@ export function SearchTeamsScreen() {
             </>
           ) : (
             <ActionButton
+              fullWidth
               label="Seguir"
               onPress={() => setFollowingAjax(true)}
               primary
@@ -122,6 +124,7 @@ export function MyTeamsScreen() {
         <TeamCard>
           <ChoosePreviewTeam />
           <ActionButton
+            fullWidth
             label="Deixar de seguir"
             onPress={() => setFollowingAjax(false)}
           />
@@ -148,7 +151,7 @@ function ProfilePreviewScreen() {
         <Text style={styles.cardTitle}>Fuso horário</Text>
         <Text style={styles.description}>{previewTimezone}</Text>
       </View>
-      <ActionButton label="Sair da prévia" onPress={closePreview} />
+      <ActionButton fullWidth label="Sair da prévia" onPress={closePreview} />
     </HomeScreen>
   );
 }
@@ -226,6 +229,7 @@ function AccountProfile({ user }: { user: Profile }) {
         </Text>
       )}
       <ActionButton
+        fullWidth
         label="Sair"
         destructive
         onPress={() => void submit('logout')}

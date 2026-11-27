@@ -224,6 +224,7 @@ export function ManageTeamsScreen({ token }: { token: string }) {
       description="Acesse seus times próprios e seguidos."
     >
       <ActionButton
+        fullWidth
         icon="check"
         label="Escolher ou trocar time"
         disabled={busy}
@@ -236,6 +237,7 @@ export function ManageTeamsScreen({ token }: { token: string }) {
       )}
       {savedTeam && !session?.user.activeTeamId && (
         <ActionButton
+          fullWidth
           primary
           label="Abrir agenda"
           disabled={busy}
@@ -268,8 +270,9 @@ export function ManageTeamsScreen({ token }: { token: string }) {
               }}
             />
           ))}
-          <View style={styles.row}>
+          <View style={styles.actions}>
             <ActionButton
+              fullWidth
               icon="save"
               label={busy ? 'Salvando…' : 'Salvar time'}
               primary
@@ -277,6 +280,7 @@ export function ManageTeamsScreen({ token }: { token: string }) {
               onPress={() => void submit()}
             />
             <ActionButton
+              fullWidth
               icon="cancel"
               label="Cancelar"
               disabled={busy}
@@ -286,6 +290,7 @@ export function ManageTeamsScreen({ token }: { token: string }) {
         </View>
       ) : (
         <ActionButton
+          fullWidth
           icon="add"
           label="Cadastrar time"
           primary
@@ -317,6 +322,7 @@ export function ManageTeamsScreen({ token }: { token: string }) {
             </Text>
             <Text style={styles.text}>{team.athletesCount ?? 0} atletas</Text>
             <ActionButton
+              fullWidth
               icon="check"
               label={
                 team.id === session?.user.activeTeamId
@@ -335,8 +341,9 @@ export function ManageTeamsScreen({ token }: { token: string }) {
                       ? 'Deixar de seguir este time? Você continuará com acesso como criador.'
                       : 'Deixar de seguir este time? Você perderá acesso aos jogos. Os dados do time serão preservados.'}
                   </Text>
-                  <View style={styles.row}>
+                  <View style={styles.actions}>
                     <ActionButton
+                      fullWidth
                       icon="unfollow"
                       label="Confirmar deixar de seguir"
                       destructive
@@ -344,6 +351,7 @@ export function ManageTeamsScreen({ token }: { token: string }) {
                       onPress={() => void leave(team)}
                     />
                     <ActionButton
+                      fullWidth
                       icon="cancel"
                       label="Cancelar"
                       disabled={busy}
@@ -353,6 +361,7 @@ export function ManageTeamsScreen({ token }: { token: string }) {
                 </View>
               ) : (
                 <ActionButton
+                  fullWidth
                   icon="unfollow"
                   label="Deixar de seguir"
                   destructive
@@ -371,8 +380,9 @@ export function ManageTeamsScreen({ token }: { token: string }) {
                       Excluir este time permanentemente? Ele também será
                       removido dos seguidores e das seleções de agenda.
                     </Text>
-                    <View style={styles.row}>
+                    <View style={styles.actions}>
                       <ActionButton
+                        fullWidth
                         icon="remove"
                         label="Confirmar exclusão"
                         destructive
@@ -380,6 +390,7 @@ export function ManageTeamsScreen({ token }: { token: string }) {
                         onPress={() => void submit(team.id)}
                       />
                       <ActionButton
+                        fullWidth
                         icon="cancel"
                         label="Cancelar exclusão"
                         disabled={busy}
@@ -413,6 +424,7 @@ export function ManageTeamsScreen({ token }: { token: string }) {
         ))
       )}
       <ActionButton
+        fullWidth
         icon="refresh"
         label={loadFailed ? 'Tentar novamente' : 'Atualizar lista'}
         disabled={busy || loading || !!form}

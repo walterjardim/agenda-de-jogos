@@ -224,8 +224,9 @@ function UniformList({ team }: { team: AgendaTeam }) {
                       />
                     </View>
                   )}
-                  <View style={styles.row}>
+                  <View style={styles.actions}>
                     <ActionButton
+                      fullWidth
                       icon="remove"
                       label={busy ? 'Removendo…' : 'Confirmar remoção'}
                       destructive
@@ -233,6 +234,7 @@ function UniformList({ team }: { team: AgendaTeam }) {
                       onPress={() => void remove()}
                     />
                     <ActionButton
+                      fullWidth
                       icon="cancel"
                       label="Cancelar"
                       disabled={busy}
@@ -248,9 +250,10 @@ function UniformList({ team }: { team: AgendaTeam }) {
           ))}
         </View>
       )}
-      <View style={styles.row}>
+      <View style={styles.actions}>
         {data?.team.isOwner === true && (
           <ActionButton
+            fullWidth
             icon="add"
             label="Nova peça"
             disabled={busy}
@@ -532,8 +535,9 @@ function UniformForm({
           <Text style={styles.label}>
             Excluir esta peça? Os jogos que a utilizam ficarão sem essa peça.
           </Text>
-          <View style={styles.row}>
+          <View style={styles.actions}>
             <ActionButton
+              fullWidth
               icon="remove"
               label="Confirmar exclusão"
               primary
@@ -541,6 +545,7 @@ function UniformForm({
               onPress={() => void submit(true)}
             />
             <ActionButton
+              fullWidth
               icon="cancel"
               label="Cancelar exclusão"
               disabled={busy}
@@ -550,6 +555,7 @@ function UniformForm({
               }}
             />
             <ActionButton
+              fullWidth
               icon="back"
               label="Voltar à lista"
               disabled={busy}
@@ -558,8 +564,9 @@ function UniformForm({
           </View>
         </View>
       ) : (
-        <View style={styles.row}>
+        <View style={styles.actions}>
           <ActionButton
+            fullWidth
             icon="save"
             label={busy ? 'Salvando…' : 'Salvar peça'}
             primary
@@ -568,6 +575,7 @@ function UniformForm({
           />
           {piece && (
             <ActionButton
+              fullWidth
               icon="remove"
               label="Excluir peça"
               destructive
@@ -579,6 +587,7 @@ function UniformForm({
             />
           )}
           <ActionButton
+            fullWidth
             icon="back"
             label="Voltar à lista"
             disabled={busy}

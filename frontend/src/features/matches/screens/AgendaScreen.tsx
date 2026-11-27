@@ -99,14 +99,12 @@ function WeekCalendar({
       : week.label;
   const { fontScale } = useWindowDimensions();
   const [daysWidth, setDaysWidth] = useState(0);
-  const dayMinWidth = Math.max(48, Math.ceil(36 * fontScale));
-  const availableColumns = Math.floor((daysWidth + 2) / (dayMinWidth + 2));
+  const dayMinWidth = Math.max(44, Math.ceil(36 * fontScale));
+  const availableColumns = Math.floor(daysWidth / dayMinWidth);
   const columns =
     availableColumns >= 7 ? 7 : Math.max(1, Math.min(4, availableColumns));
   const dayWidth =
-    daysWidth > 0
-      ? Math.floor((daysWidth - (columns - 1) * 2) / columns)
-      : dayMinWidth;
+    daysWidth > 0 ? Math.floor(daysWidth / columns) : dayMinWidth;
 
   const dayButtons = useRef<(ComponentRef<typeof Pressable> | null)[]>([]);
   const tabStop = selectedDay ?? week.from;
@@ -154,6 +152,14 @@ function WeekCalendar({
         >
           <Text style={agendaStyles.arrow}>›</Text>
         </Pressable>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Ir para hoje"
+          onPress={showToday}
+          style={agendaStyles.calendarButton}
+        >
+          <Text style={agendaStyles.todayAction}>Hoje</Text>
+        </Pressable>
       </View>
       <View
         accessibilityRole="radiogroup"
@@ -189,31 +195,26 @@ function WeekCalendar({
                 selected && agendaStyles.selected,
               ]}
             >
-              <Text style={agendaStyles.weekday}>{weekday}</Text>
+              <Text style={agendaStyles.weekday}>
+                {isToday ? 'Hoje' : weekday}
+              </Text>
               <Text style={agendaStyles.dayNumber}>{date.day}</Text>
-              <View style={agendaStyles.dayStatus}>
-                {isToday && <Text style={agendaStyles.weekday}>Hoje</Text>}
-                {hasMatch && <View style={agendaStyles.matchDot} />}
-              </View>
+              <View
+                style={[
+                  agendaStyles.matchDot,
+                  !hasMatch && agendaStyles.hiddenDot,
+                ]}
+              />
             </Pressable>
           );
         })}
       </View>
-      <View style={agendaStyles.calendarFooter}>
-        {matchDays.size > 0 && (
-          <View style={agendaStyles.legend}>
-            <View style={agendaStyles.matchDot} />
-            <Text style={agendaStyles.weekday}>Dia de jogo</Text>
-          </View>
-        )}
-        <Pressable
-          accessibilityRole="button"
-          onPress={showToday}
-          style={agendaStyles.calendarButton}
-        >
-          <Text style={agendaStyles.todayAction}>Hoje</Text>
-        </Pressable>
-      </View>
+      {matchDays.size > 0 && (
+        <View style={agendaStyles.legend}>
+          <View style={agendaStyles.matchDot} />
+          <Text style={agendaStyles.weekday}>Dia de jogo</Text>
+        </View>
+      )}
     </View>
   );
 }
@@ -459,7 +460,11 @@ function WeeklyAgenda({ id, timezone, token }: AgendaTeam) {
             Não foi possível carregar o time escolhido. Tente novamente ou
             troque de time.
           </Text>
-          <ActionButton label="Recarregar time" onPress={teamResource.retry} />
+          <ActionButton
+            fullWidth
+            label="Recarregar time"
+            onPress={teamResource.retry}
+          />
         </>
       )}
     </HomeScreen>
@@ -478,12 +483,14 @@ export function AgendaScreen() {
             Escolha um time para ver os jogos na agenda.
           </Text>
           <ActionButton
+            fullWidth
             label="Escolher um time"
             primary
             onPress={() => router.navigate('/buscar')}
           />
           {session && (
             <ActionButton
+              fullWidth
               label="Cadastrar meu time"
               onPress={() =>
                 router.navigate({
@@ -502,15 +509,15 @@ export function AgendaScreen() {
 
 const agendaStyles = StyleSheet.create({
   calendar: {
-    padding: 12,
-    gap: 4,
-    borderRadius: 20,
+    paddingHorizontal: 6,
+    paddingVertical: 4,
+    borderRadius: 16,
     backgroundColor: theme.colors.accent,
   },
   calendarHeading: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 8,
+    gap: 2,
   },
   period: {
     flex: 1,
@@ -519,14 +526,15 @@ const agendaStyles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '700',
   },
-  days: { flexDirection: 'row', flexWrap: 'wrap', gap: 2 },
+  days: { flexDirection: 'row', flexWrap: 'wrap' },
   day: {
     alignItems: 'center',
-    minHeight: 48,
+    minHeight: 44,
+    justifyContent: 'center',
     borderWidth: 1,
     borderColor: 'transparent',
-    paddingVertical: 4,
-    gap: 2,
+    paddingVertical: 2,
+    gap: 1,
     borderRadius: 10,
   },
   pressed: { opacity: 0.8 },
@@ -536,12 +544,6 @@ const agendaStyles = StyleSheet.create({
   },
   weekday: { color: theme.colors.white, fontSize: 11 },
   dayNumber: { color: theme.colors.white, fontSize: 16, fontWeight: '800' },
-  calendarFooter: {
-    flexDirection: 'row',
-    justifyContent: 'flex-end',
-    alignItems: 'center',
-    flexWrap: 'wrap',
-  },
   calendarButton: {
     minWidth: 48,
     minHeight: 48,
@@ -556,13 +558,14 @@ const agendaStyles = StyleSheet.create({
     fontWeight: '700',
     textDecorationLine: 'underline',
   },
-  legend: { flexGrow: 1, flexDirection: 'row', alignItems: 'center', gap: 6 },
-  dayStatus: {
-    minHeight: 14,
+  legend: {
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
-    gap: 2,
+    gap: 5,
+    paddingHorizontal: 6,
+    paddingVertical: 3,
   },
+  hiddenDot: { opacity: 0 },
   matchDot: {
     width: 6,
     height: 6,
